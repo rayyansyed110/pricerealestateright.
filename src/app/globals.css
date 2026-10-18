@@ -1,0 +1,31 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root { --font-sans: "Inter", system-ui, -apple-system, "Segoe UI", Roboto, sans-serif; }
+html { scroll-behavior: smooth; }
+body { @apply bg-slate-100 text-slate-900 antialiased; }
+
+@layer components {
+  .container-x { @apply mx-auto w-full max-w-7xl px-4 sm:px-6; }
+  .card { @apply rounded-xl bg-white shadow-sm ring-1 ring-slate-200; }
+  .btn { @apply inline-flex items-center justify-center gap-2 rounded-lg px-4 py-2.5 text-sm font-semibold transition disabled:cursor-not-allowed disabled:opacity-60; }
+  .btn-green { @apply btn bg-green-500 text-white shadow hover:bg-green-600; }
+  .btn-blue { @apply btn bg-blue-600 text-white hover:bg-blue-700; }
+  .btn-navy { @apply btn bg-navy-900 text-white hover:bg-navy-800; }
+  .btn-outline { @apply btn border border-slate-300 bg-white text-slate-700 hover:bg-slate-50; }
+  .btn-ghost-light { @apply btn border border-white/40 text-white hover:bg-white/10; }
+  .btn-red { @apply btn bg-red-600 text-white hover:bg-red-700; }
+  .btn-sm { @apply px-3 py-1.5 text-xs; }
+  .input { @apply w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-200; }
+  .label { @apply mb-1 block text-sm font-medium text-slate-700; }
+  .pill { @apply inline-flex items-center gap-1 rounded-full px-2.5 py-0.5 text-xs font-semibold; }
+  .h-section { @apply text-xl font-extrabold uppercase tracking-tight text-navy-900 sm:text-2xl; }
+  .table { @apply w-full text-left text-sm; }
+  .table th { @apply border-b border-slate-200 bg-slate-50 px-3 py-2 text-xs font-semibold uppercase text-slate-500; }
+  .table td { @apply border-b border-slate-100 px-3 py-2 align-middle; }
+}
+
+input[type="range"].guess-range { -webkit-appearance: none; appearance: none; height: 8px; border-radius: 9999px; background: linear-gradient(to right, #22c55e var(--p, 50%), #e2e8f0 var(--p, 50%)); }
+input[type="range"].guess-range::-webkit-slider-thumb { -webkit-appearance: none; width: 22px; height: 22px; border-radius: 9999px; background: #fff; border: 3px solid #2563eb; box-shadow: 0 1px 4px rgba(0,0,0,.25); cursor: pointer; }
+input[type="range"].guess-range::-moz-range-thumb { width: 18px; height: 18px; border-radius: 9999px; background: #fff; border: 3px solid #2563eb; cursor: pointer; }
