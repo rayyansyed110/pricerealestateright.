@@ -2,17 +2,30 @@ import "server-only";
 import { Resend } from "resend";
 import { db, schema } from "@/db";
 import type { Game, User } from "@/db/schema";
-import { money } from "./format";
+import { createHmac, timingSafeEqual } from "crypto";
+import { fmtDateTime, money } from "./format";
 
 const APP_URL = process.env.APP_URL || "http://localhost:3000";
 const FROM = process.env.EMAIL_FROM || "PriceRealEstateRight <onboarding@resend.dev>";
 const resend = process.env.RESEND_API_KEY ? new Resend(process.env.RESEND_API_KEY) : null;
 
-type Mail = { to: string; subject: string; html: string; type: string; gameId?: string };
+type Mail = { to: string; subject: string; html: string; type: string; gameId?: string; headers?: Record<string, string> };
+
+// ---- unsubscribe links (signed, so nobody can unsubscribe someone else) ----
+const unsubSecret = () => process.env.UNSUBSCRIBE_SECRET || process.env.SISTER_SITE_SECRET || process.env.DATABASE_URL || "dev";
+export const unsubToken = (userId: string) => createHmac("sha256", unsubSecret()).update(`unsub:${userId}`).digest("hex").slice(0, 32);
+export function verifyUnsubToken(userId: string, token: string) {
+  const a = Buffer.from(unsubToken(userId)), b = Buffer.from(token || "");
+  return a.length === b.length && timingSafeEqual(a, b);
+}
+export const unsubUrl = (userId: string) => `${APP_URL}/unsubscribe?u=${encodeURIComponent(userId)}&t=${unsubToken(userId)}`;
 
 const esc = (s: string) => s.replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" })[c]!);
 
-function layout(title: string, body: string, cta?: { label: string; href: string }) {
+const DEFAULT_FOOTER = `You're receiving this because you played a game on PriceRealEstateRight.com.<br/>
+      Research comps on <a href="${process.env.NEXT_PUBLIC_MLS_SITE_URL}" style="color:#2563eb">our MLS site</a> and get a bonus guess next week.`;
+
+function layout(title: string, body: string, cta?: { label: string; href: string }, footer = DEFAULT_FOOTER) {
   return `<!doctype html><html><body style="margin:0;background:#f1f5f9;font-family:Arial,Helvetica,sans-serif;color:#0f172a">
   <table width="100%" cellpadding="0" cellspacing="0"><tr><td align="center" style="padding:24px 12px">
   <table width="560" cellpadding="0" cellspacing="0" style="max-width:560px;background:#fff;border-radius:12px;overflow:hidden">
@@ -23,8 +36,7 @@ function layout(title: string, body: string, cta?: { label: string; href: string
       ${cta ? `<p style="margin:28px 0 8px"><a href="${cta.href}" style="background:#22c55e;color:#fff;text-decoration:none;padding:12px 22px;border-radius:8px;font-weight:bold;display:inline-block">${cta.label}</a></p>` : ""}
     </td></tr>
     <tr><td style="padding:16px 24px;background:#f8fafc;color:#64748b;font-size:12px">
-      You're receiving this because you played a game on PriceRealEstateRight.com.<br/>
-      Research comps on <a href="${process.env.NEXT_PUBLIC_MLS_SITE_URL}" style="color:#2563eb">our MLS site</a> and get a bonus guess next week.
+      ${footer}
     </td></tr>
   </table></td></tr></table></body></html>`;
 }
@@ -37,7 +49,7 @@ async function deliver(mails: Mail[]) {
     let error: string | null = null;
     if (resend) {
       try {
-        const res = await resend.batch.send(chunk.map((m) => ({ from: FROM, to: m.to, subject: m.subject, html: m.html })));
+        const res = await resend.batch.send(chunk.map((m) => ({ from: FROM, to: m.to, subject: m.subject, html: m.html, headers: m.headers })));
         if (res.error) throw new Error(res.error.message);
         status = "sent";
       } catch (e) {
@@ -89,4 +101,31 @@ export async function sendPasswordResetEmail(to: string, name: string, token: st
 export async function sendWelcomeEmail(to: string, name: string) {
   await deliver([{ to, type: "WELCOME", subject: "Welcome to PriceRealEstateRight — start guessing!",
     html: layout(`Welcome, ${esc(name)}!`, `<p>Every week starting Saturday 3 AM, new homes that are under contract go live. Guess the final sale price — the closest guess wins <b>$100</b>, and the best player of the year wins <b>$1,000</b>.</p><p>Tip: research comps on our MLS sister site to earn an extra guess on every game.</p>`, { label: "See this week's games", href: APP_URL }) }]);
+}
+
+export async function sendGuessConfirmation(user: { email: string; firstName: string }, game: Game, amount: number, left: number) {
+  const link = `${APP_URL}/games/${game.slug}`;
+  await deliver([{ to: user.email, type: "GUESS_CONFIRMATION", gameId: game.id,
+    subject: `Your guess of ${money(amount)} for ${game.address} is locked in`,
+    html: layout("Your guess is locked in!", `<p>Hi ${esc(user.firstName)},</p>
+      <p>We got your guess for <b>${esc(game.address)}, ${esc(game.city)}, ${esc(game.state)}</b>.</p>
+      <p style="background:#f1f5f9;border-radius:8px;padding:12px 14px;line-height:1.6">Your guess: <b>${money(amount)}</b><br/>Guessing closes: ${fmtDateTime(game.closesAt)}${left > 0 ? `<br/>Guesses left for this home: <b>${left}</b>` : ""}</p>
+      <p>After guessing closes you'll be able to see how everyone else guessed. When the home's sale closes, we'll email you your result. The closest guess wins <b>${money(game.prizeAmount)}</b>.</p>`,
+      { label: "View the game", href: link }) }]);
+}
+
+/** Promotional email to players who opted in. Includes a one-click unsubscribe link and the business mailing address (CAN-SPAM). */
+export async function sendMarketingEmail(
+  recipients: { id: string; email: string; firstName: string }[],
+  subject: string, message: string, mailingAddress: string, cta?: { label: string; href: string },
+) {
+  const body = esc(message).split(/\n{2,}/).map((p) => `<p style="line-height:1.6">${p.replace(/\n/g, "<br/>")}</p>`).join("");
+  return deliver(recipients.map((r) => {
+    const unsub = unsubUrl(r.id);
+    const footer = `You're receiving this because you signed up for news from PriceRealEstateRight.com.<br/>
+      <a href="${unsub}" style="color:#2563eb">Unsubscribe</a> from promotional emails.<br/>${esc(mailingAddress).replace(/\n/g, "<br/>")}`;
+    return { to: r.email, type: "MARKETING", subject,
+      headers: { "List-Unsubscribe": `<${unsub.replace("/unsubscribe?", "/api/unsubscribe?")}>`, "List-Unsubscribe-Post": "List-Unsubscribe=One-Click" },
+      html: layout(esc(subject), `<p>Hi ${esc(r.firstName)},</p>${body}`, cta, footer) };
+  }));
 }

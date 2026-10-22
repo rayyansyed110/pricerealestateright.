@@ -5,6 +5,7 @@ import { db, schema } from "@/db";
 import { getCurrentUser, isApprovedAgent } from "@/lib/auth";
 import { gameStatus } from "@/lib/game";
 import { allowedGuesses, getSettings } from "@/lib/settings";
+import { sendGuessConfirmation } from "@/lib/email";
 import type { FormState } from "./auth";
 
 export async function submitGuessAction(_: FormState, fd: FormData): Promise<FormState> {
@@ -29,6 +30,7 @@ export async function submitGuessAction(_: FormState, fd: FormData): Promise<For
     await tx.insert(schema.guesses).values({ gameId, userId: user.id, amount, isAgent: isApprovedAgent(user) });
     revalidatePath(`/games/${game.slug}`);
     const left = allowed - (c?.n ?? 0) - 1;
+    await sendGuessConfirmation(user, game, amount, left).catch((e) => console.error("guess email failed", e));
     return { ok: `Guess of $${amount.toLocaleString()} locked in!${left > 0 ? ` You have ${left} more guess${left > 1 ? "es" : ""}.` : ""}` };
   });
 }

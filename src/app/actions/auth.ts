@@ -26,6 +26,7 @@ const registerSchema = z.object({
   brokerage: z.string().trim().max(120).optional(),
   licenseNumber: z.string().trim().max(60).optional(),
   licenseState: z.string().trim().max(30).optional(),
+  marketingOptIn: z.literal("on").optional(),
   terms: z.literal("on", { errorMap: () => ({ message: "Please accept the rules & terms" }) }),
 });
 
@@ -43,7 +44,7 @@ export async function registerAction(_: FormState, fd: FormData): Promise<FormSt
   }
   const [user] = await db.insert(schema.users).values({
     email: d.email, passwordHash: await hashPassword(d.password), firstName: d.firstName, lastName: d.lastName,
-    phone: d.phone || null, city: d.city || null, agentStatus: d.isAgent ? "PENDING" : "NONE",
+    phone: d.phone || null, city: d.city || null, agentStatus: d.isAgent ? "PENDING" : "NONE", marketingOptIn: !!d.marketingOptIn,
   }).returning();
   if (d.isAgent) {
     await db.insert(schema.agentProfiles).values({

@@ -1,4 +1,5 @@
 import "server-only";
+import { eq } from "drizzle-orm";
 import { db, schema } from "@/db";
 
 export const DEFAULT_SETTINGS = {
@@ -33,4 +34,13 @@ export function allowedGuesses(
   u: { usedMlsComps: boolean; usedMortgageSite: boolean },
 ) {
   return s.baseGuesses + (u.usedMlsComps ? s.mlsBonusGuesses : 0) + (u.usedMortgageSite ? s.mortgageBonusGuesses : 0);
+}
+
+/** Free-text settings (e.g. the business mailing address shown in promotional emails). */
+export async function getTextSetting(key: string) {
+  const [row] = await db.select().from(schema.settings).where(eq(schema.settings.key, key));
+  return row?.value ?? "";
+}
+export async function setTextSetting(key: string, value: string) {
+  await db.insert(schema.settings).values({ key, value }).onConflictDoUpdate({ target: schema.settings.key, set: { value } });
 }

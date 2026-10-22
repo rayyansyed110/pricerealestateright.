@@ -7,7 +7,8 @@ import { fromZonedTime } from "date-fns-tz";
 import { db, schema } from "@/db";
 import { requireAdmin } from "@/lib/auth";
 import { closeGame } from "@/lib/game";
-import { saveSettings, DEFAULT_SETTINGS } from "@/lib/settings";
+import { saveSettings, DEFAULT_SETTINGS, setTextSetting } from "@/lib/settings";
+import { sendMarketingEmail } from "@/lib/email";
 import { saveImage } from "@/lib/uploads";
 import { slugify, TZ } from "@/lib/format";
 import type { FormState } from "./auth";
@@ -219,4 +220,31 @@ export async function saveListingAgentAction(_: FormState, fd: FormData): Promis
   } else await db.insert(schema.agentProfiles).values(values);
   revalidatePath("/", "layout");
   return { ok: "Agent saved" };
+}
+
+const marketingSchema = z.object({
+  subject: z.string().trim().min(3, "Subject is required").max(150),
+  message: z.string().trim().min(10, "Message is too short").max(10000),
+  mailingAddress: z.string().trim().min(10, "A mailing address is required by law (CAN-SPAM)").max(300),
+  ctaLabel: z.string().trim().max(40).optional(),
+  ctaUrl: z.string().trim().url().optional().or(z.literal("")),
+  mode: z.enum(["test", "all"]),
+});
+
+/** Send a promotional email: a test to the admin, or to every player who opted in. */
+export async function sendMarketingAction(_: FormState, fd: FormData): Promise<FormState> {
+  const admin = await requireAdmin();
+  const p = marketingSchema.safeParse(Object.fromEntries(fd));
+  if (!p.success) return { error: p.error.issues[0].message };
+  const d = p.data;
+  await setTextSetting("mailingAddress", d.mailingAddress);
+  const cta = d.ctaLabel && d.ctaUrl ? { label: d.ctaLabel, href: d.ctaUrl } : undefined;
+  const recipients = d.mode === "test"
+    ? [{ id: admin.id, email: admin.email, firstName: admin.firstName }]
+    : await db.select({ id: schema.users.id, email: schema.users.email, firstName: schema.users.firstName })
+        .from(schema.users).where(and(eq(schema.users.marketingOptIn, true), eq(schema.users.disabled, false)));
+  if (!recipients.length) return { error: "No players have opted in to emails yet." };
+  const sent = await sendMarketingEmail(recipients, d.subject, d.message, d.mailingAddress, cta);
+  const note = process.env.RESEND_API_KEY ? "" : " (Email service not set up yet, so they were only recorded in the Email Log.)";
+  return { ok: d.mode === "test" ? `Test sent to ${admin.email}.${note}` : `Sent to ${sent} of ${recipients.length} players.${note}` };
 }

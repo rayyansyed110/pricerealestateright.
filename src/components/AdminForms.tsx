@@ -1,5 +1,7 @@
 "use client";
+import { useState } from "react";
 import {
+  sendMarketingAction,
   addVideoAction, closeGameAction, saveGameAction, saveListingAgentAction, saveSettingsAction,
 } from "@/app/actions/admin";
 import { Msg, Submit, useForm } from "./ui";
@@ -126,6 +128,35 @@ export function ListingAgentForm({ p }: { p?: Record<string, string | null> }) {
       <div className="sm:col-span-2"><label className="label">…or upload photo</label><input name="photo" type="file" accept="image/*" className="text-sm" /></div>
       <div className="sm:col-span-2"><label className="label">Bio</label><textarea name="bio" rows={2} defaultValue={v("bio")} className="input" /></div>
       <div className="space-y-2 sm:col-span-2"><Msg state={s} /><Submit pending={pending}>{p?.id ? "Save agent" : "Add agent"}</Submit></div>
+    </form>
+  );
+}
+
+export function MarketingForm({ address, optedIn }: { address: string; optedIn: number }) {
+  const { state: s, onSubmit, pending } = useForm(sendMarketingAction);
+  const [mode, setMode] = useState<"test" | "all">("test");
+  return (
+    <form
+      onSubmit={(e) => {
+        const m = ((e.nativeEvent as SubmitEvent).submitter as HTMLButtonElement | null)?.value;
+        if (m === "all" && !confirm(`Send this email to all ${optedIn} players who opted in?`)) { e.preventDefault(); return; }
+        setMode(m === "all" ? "all" : "test");
+        onSubmit(e);
+      }}
+      className="space-y-4"
+    >
+      <div><label className="label">Subject</label><input name="subject" required className="input" placeholder="New homes are live — guess the price and win $100!" /></div>
+      <div><label className="label">Message</label><textarea name="message" required rows={8} className="input" placeholder={"This week's games are open...\n\nLeave a blank line between paragraphs."} /><p className="mt-1 text-xs text-slate-500">Each email starts with &quot;Hi &lt;first name&gt;,&quot; automatically. Blank lines make new paragraphs.</p></div>
+      <div className="grid gap-4 sm:grid-cols-2">
+        <div><label className="label">Button text (optional)</label><input name="ctaLabel" className="input" placeholder="Play this week's games" /></div>
+        <div><label className="label">Button link (optional)</label><input name="ctaUrl" type="url" className="input" placeholder="https://www.pricerealestateright.com" /></div>
+      </div>
+      <div><label className="label">Business mailing address (required by law in every promotional email)</label><textarea name="mailingAddress" required rows={2} defaultValue={address} className="input" placeholder={"PriceRealEstateRight LLC\n123 Main St, Austin, TX 78701"} /></div>
+      <Msg state={s} />
+      <div className="flex flex-wrap gap-3">
+        <button type="submit" name="mode" value="test" disabled={pending} className="btn-outline">{pending && mode === "test" ? "Sending…" : "Send test to me"}</button>
+        <button type="submit" name="mode" value="all" disabled={pending || optedIn === 0} className="btn-green">{pending && mode === "all" ? "Sending…" : `Send to ${optedIn} opted-in player${optedIn === 1 ? "" : "s"}`}</button>
+      </div>
     </form>
   );
 }

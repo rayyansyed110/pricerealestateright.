@@ -47,6 +47,7 @@ export function RegisterForm({ next, agent }: { next?: string; agent?: boolean }
           <p className="text-xs text-slate-500 sm:col-span-3">Agent accounts are reviewed by our team before appearing on the Realtor Leaderboard.</p>
         </div>
       )}
+      <label className="flex items-start gap-2 text-sm"><input type="checkbox" name="marketingOptIn" className="mt-1" /> Send me news, new-game alerts and promotions by email. You can unsubscribe anytime.</label>
       <label className="flex items-start gap-2 text-sm"><input type="checkbox" name="terms" required className="mt-1" /> I am 18 or older and agree to the <Link href="/how-it-works" className="text-blue-600 underline" target="_blank">game rules</Link>.</label>
       <Msg state={s} />
       <Submit pending={pending} className="btn-green w-full" pendingText="Creating account…">Create Account</Submit>
@@ -88,7 +89,7 @@ export function ProfileForm({ u }: { u: { firstName: string; lastName: string; p
         <div><label className="label">Phone</label><input name="phone" defaultValue={u.phone ?? ""} className="input" /></div>
         <div><label className="label">City</label><input name="city" defaultValue={u.city ?? ""} className="input" /></div>
       </div>
-      <label className="flex items-center gap-2 text-sm"><input type="checkbox" name="marketingOptIn" defaultChecked={u.marketingOptIn} /> Email me when new games go live</label>
+      <label className="flex items-center gap-2 text-sm"><input type="checkbox" name="marketingOptIn" defaultChecked={u.marketingOptIn} /> Send me news, new-game alerts and promotions by email</label>
       <Msg state={s} />
       <Submit pending={pending}>Save profile</Submit>
     </form>

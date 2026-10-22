@@ -13,7 +13,8 @@ export function useForm(action: (s: S, fd: FormData) => Promise<S>, confirmMsg?:
   const onSubmit = (e: FormEvent<HTMLFormElement>) => {
     e.preventDefault();
     if (confirmMsg && !confirm(confirmMsg)) return;
-    const fd = new FormData(e.currentTarget);
+    const submitter = (e.nativeEvent as SubmitEvent).submitter as HTMLButtonElement | null;
+    const fd = new FormData(e.currentTarget, submitter);
     startTransition(() => run(fd));
   };
   return { state, onSubmit, pending };
