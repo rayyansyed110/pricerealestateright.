@@ -47,8 +47,8 @@ export function RegisterForm({ next, agent }: { next?: string; agent?: boolean }
           <p className="text-xs text-slate-500 sm:col-span-3">Agent accounts are reviewed by our team before appearing on the Realtor Leaderboard.</p>
         </div>
       )}
-      <label className="flex items-start gap-2 text-sm"><input type="checkbox" name="marketingOptIn" className="mt-1" /> Send me news, new-game alerts and promotions by email. You can unsubscribe anytime.</label>
       <label className="flex items-start gap-2 text-sm"><input type="checkbox" name="terms" required className="mt-1" /> I am 18 or older and agree to the <Link href="/how-it-works" className="text-blue-600 underline" target="_blank">game rules</Link>.</label>
+      <p className="text-xs text-slate-500">By creating an account you&apos;ll receive game updates, new-listing alerts and promotional emails from PriceRealEstateRight. You can unsubscribe anytime from any email or your account page.</p>
       <Msg state={s} />
       <Submit pending={pending} className="btn-green w-full" pendingText="Creating account…">Create Account</Submit>
       <p className="text-center text-sm">Already have an account? <Link href={`/login${next ? `?next=${encodeURIComponent(next)}` : ""}`} className="text-blue-600 hover:underline">Sign in</Link></p>

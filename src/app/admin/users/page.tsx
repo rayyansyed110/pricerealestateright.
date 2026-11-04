@@ -27,8 +27,9 @@ export default async function Users({ searchParams }: { searchParams: Promise<{ 
         <Link href="/admin/users" className="btn-outline btn-sm">All</Link>
         <Link href="/admin/users?filter=pending" className="btn-outline btn-sm">Realtors awaiting approval</Link>
         <Link href="/admin/users?filter=agents" className="btn-outline btn-sm">Approved realtors</Link>
-        <a href="/admin/users/export?optin=1" className="btn-green btn-sm">⬇ Download opted-in emails (CSV)</a>
-        <a href="/admin/users/export" className="btn-outline btn-sm">⬇ Download all users (CSV)</a>
+        <a href="/admin/users/export?format=xlsx" className="btn-green btn-sm">⬇ All players (Excel)</a>
+        <a href="/admin/users/export?format=csv" className="btn-outline btn-sm">⬇ All players (CSV)</a>
+        <a href="/admin/users/export?format=xlsx&list=marketing" className="btn-outline btn-sm">⬇ Email list, excludes unsubscribed (Excel)</a>
       </div>
       <div className="card overflow-x-auto">
         <table className="table">
@@ -47,7 +48,7 @@ export default async function Users({ searchParams }: { searchParams: Promise<{ 
                     {u.agentStatus !== "REJECTED" && <> <Btn id={u.id} op="rejectAgent" cls="btn-outline btn-sm mt-1">{u.agentStatus === "APPROVED" ? "Revoke" : "Reject"}</Btn></>}
                   </>}
                 </td>
-                <td>{u.marketingOptIn ? <span className="pill bg-green-100 text-green-700">Opted in</span> : <span className="pill bg-slate-100 text-slate-500">No</span>}</td>
+                <td>{u.marketingOptIn ? <span className="pill bg-green-100 text-green-700">Subscribed</span> : <span className="pill bg-slate-100 text-slate-500">Unsubscribed</span>}</td>
                 <td><Btn id={u.id} op="toggleMls" value={String(!u.usedMlsComps)} cls={u.usedMlsComps ? "btn-green btn-sm" : "btn-outline btn-sm"}>{u.usedMlsComps ? "On" : "Off"}</Btn></td>
                 <td><Btn id={u.id} op="toggleMortgage" value={String(!u.usedMortgageSite)} cls={u.usedMortgageSite ? "btn-green btn-sm" : "btn-outline btn-sm"}>{u.usedMortgageSite ? "On" : "Off"}</Btn></td>
                 <td className="whitespace-nowrap">

@@ -59,6 +59,19 @@ export async function saveGameAction(_: FormState, fd: FormData): Promise<FormSt
     opensAt, closesAt, prizeAmount: d.prizeAmount ?? DEFAULT_SETTINGS.gamePrize,
     listingAgentId: d.listingAgentId || null, published: !!d.published,
   };
+  // videos entered on the new-listing form (validated before anything is saved)
+  const newVideos: { type: "AGENT_PROMO" | "WALKTHROUGH" | "CLOSING"; title: string; url: string; agentId: string | null }[] = [];
+  for (let i = 0; i < 3; i++) {
+    const url = String(fd.get(`video_url_${i}`) || "").trim();
+    if (!url) continue;
+    if (!/^https:\/\/\S+$/.test(url)) return { error: `Video ${i + 1}: link must start with https://` };
+    const t = String(fd.get(`video_type_${i}`) || "AGENT_PROMO");
+    const type = (["AGENT_PROMO", "WALKTHROUGH", "CLOSING"].includes(t) ? t : "AGENT_PROMO") as "AGENT_PROMO" | "WALKTHROUGH" | "CLOSING";
+    const defaults = { AGENT_PROMO: "Meet the Agent & Neighborhood Intro", WALKTHROUGH: "Property Walkthrough & Features Tour", CLOSING: "Closing & Negotiation Walkthrough" };
+    const title = String(fd.get(`video_title_${i}`) || "").trim().slice(0, 120) || defaults[type];
+    newVideos.push({ type, title, url, agentId: String(fd.get(`video_agent_${i}`) || "") || null });
+  }
+
   // save uploaded photos first, so a failed upload doesn't leave a half-created game
   const photoUrls: string[] = [];
   for (const f of fd.getAll("photos")) {
@@ -80,6 +93,7 @@ export async function saveGameAction(_: FormState, fd: FormData): Promise<FormSt
   }
   const existing = await db.select({ id: schema.photos.id }).from(schema.photos).where(eq(schema.photos.gameId, gid));
   for (const [i, url] of photoUrls.entries()) await db.insert(schema.photos).values({ gameId: gid, url, sortOrder: existing.length + i });
+  if (newVideos.length) await db.insert(schema.videos).values(newVideos.map((v) => ({ ...v, gameId: gid, approved: true })));
   revalidatePath("/", "layout");
   if (!id) redirect(`/admin/games/${gid}?created=1`);
   return { ok: "Game saved" };

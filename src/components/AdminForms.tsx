@@ -54,6 +54,28 @@ export function GameForm({ g, agents, tzLabel }: { g: GameDefaults; agents: { id
         <div><label className="label">Upload images (JPG/PNG/WEBP, up to 4 MB each — add a few at a time)</label><input type="file" name="photos" multiple accept="image/jpeg,image/png,image/webp,image/gif" className="text-sm" /></div>
         <div><label className="label">…or paste image URLs (one per line)</label><textarea name="photoUrls" rows={2} placeholder="https://…" className="input" /></div>
       </fieldset>
+      {!g.id && (
+        <fieldset className="space-y-3">
+          <legend className="mb-2 text-sm font-bold uppercase text-slate-500">Add videos (optional)</legend>
+          <p className="text-xs text-slate-500">Paste YouTube, Vimeo or .mp4 links. Leave a row empty to skip it. Videos must not mention the price. Closing videos only show after the game is closed.</p>
+          {[0, 1, 2].map((i) => (
+            <div key={i} className="grid gap-3 rounded-lg border border-slate-200 p-3 sm:grid-cols-12">
+              <div className="sm:col-span-3"><label className="label">Type</label>
+                <select name={`video_type_${i}`} defaultValue={["AGENT_PROMO", "WALKTHROUGH", "CLOSING"][i]} className="input">
+                  <option value="AGENT_PROMO">Agent promo / neighborhood intro</option>
+                  <option value="WALKTHROUGH">Property walkthrough & features</option>
+                  <option value="CLOSING">Closing & negotiation (after close)</option>
+                </select>
+              </div>
+              <div className="sm:col-span-3"><label className="label">Title</label><input name={`video_title_${i}`} className="input" placeholder="Meet the Agent" /></div>
+              <div className="sm:col-span-4"><label className="label">Video link</label><input name={`video_url_${i}`} type="url" className="input" placeholder="https://youtube.com/watch?v=…" /></div>
+              <div className="sm:col-span-2"><label className="label">Agent</label>
+                <select name={`video_agent_${i}`} className="input"><option value="">— None —</option>{agents.map((x) => <option key={x.id} value={x.id}>{x.label}</option>)}</select>
+              </div>
+            </div>
+          ))}
+        </fieldset>
+      )}
       <Msg state={s} />
       <Submit pending={pending} pendingText="Saving…">{g.id ? "Save changes" : "Create game"}</Submit>
     </form>
@@ -139,7 +161,7 @@ export function MarketingForm({ address, optedIn }: { address: string; optedIn: 
     <form
       onSubmit={(e) => {
         const m = ((e.nativeEvent as SubmitEvent).submitter as HTMLButtonElement | null)?.value;
-        if (m === "all" && !confirm(`Send this email to all ${optedIn} players who opted in?`)) { e.preventDefault(); return; }
+        if (m === "all" && !confirm(`Send this email to all ${optedIn} subscribed players?`)) { e.preventDefault(); return; }
         setMode(m === "all" ? "all" : "test");
         onSubmit(e);
       }}
@@ -155,7 +177,7 @@ export function MarketingForm({ address, optedIn }: { address: string; optedIn: 
       <Msg state={s} />
       <div className="flex flex-wrap gap-3">
         <button type="submit" name="mode" value="test" disabled={pending} className="btn-outline">{pending && mode === "test" ? "Sending…" : "Send test to me"}</button>
-        <button type="submit" name="mode" value="all" disabled={pending || optedIn === 0} className="btn-green">{pending && mode === "all" ? "Sending…" : `Send to ${optedIn} opted-in player${optedIn === 1 ? "" : "s"}`}</button>
+        <button type="submit" name="mode" value="all" disabled={pending || optedIn === 0} className="btn-green">{pending && mode === "all" ? "Sending…" : `Send to ${optedIn} subscribed player${optedIn === 1 ? "" : "s"}`}</button>
       </div>
     </form>
   );
