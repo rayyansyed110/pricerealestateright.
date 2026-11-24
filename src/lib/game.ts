@@ -3,9 +3,10 @@ import { and, asc, desc, eq, gte, inArray, isNotNull, lte, sql } from "drizzle-o
 import { fromZonedTime, toZonedTime } from "date-fns-tz";
 import { db, schema } from "@/db";
 import type { Game } from "@/db/schema";
-import { TZ } from "./format";
+import { money, TZ } from "./format";
 import { getSettings } from "./settings";
 import { sendResultEmails } from "./email";
+import { sendSms } from "./sms";
 import { rankGuesses } from "./scoring";
 
 export type GameStatus = "UPCOMING" | "OPEN" | "PENDING" | "CLOSED";
@@ -103,7 +104,7 @@ export async function closeGame(gameId: string, finalPrice: number, opts: { send
     await db.insert(schema.gameWinners).values({ gameId, userId: agents[0].userId, guessId: agents[0].id, isAgent: true, difference: agents[0].diff, prizeAmount: settings.agentGamePrize });
   }
 
-  let sent = 0;
+  let sent = 0, texts = 0;
   if (opts.sendEmails) {
     const ranked = [...pub, ...agents];
     const users = ranked.length
@@ -117,9 +118,52 @@ export async function closeGame(gameId: string, finalPrice: number, opts: { send
       return [{ user: u, guess: r.amount, type: type as "WON" | "OVERBID" | "UNDERBID", isAgent: r.isAgent }];
     });
     sent = await sendResultEmails({ ...game, finalSalePrice: finalPrice }, recipients);
+    texts = await sendResultTexts({ ...game, finalSalePrice: finalPrice }, recipients);
     await db.update(schema.games).set({ resultsSentAt: new Date() }).where(eq(schema.games.id, gameId));
   }
-  return { publicWinner: pub[0], agentWinner: agents[0], emailsSent: sent };
+  return { publicWinner: pub[0], agentWinner: agents[0], emailsSent: sent, textsSent: texts };
+}
+
+// ---------- Text messages ----------
+const SITE = () => (process.env.APP_URL || "https://www.pricerealestateright.com").replace(/\/$/, "");
+const textable = (u: { smsConsent: boolean; disabled: boolean; phone: string | null }) => u.smsConsent && !u.disabled && !!u.phone;
+
+/** Winners who asked for a win text get one; players who asked for game updates get their result. */
+async function sendResultTexts(game: Game, recipients: { user: typeof schema.users.$inferSelect; guess: number; type: "WON" | "OVERBID" | "UNDERBID"; isAgent: boolean }[]) {
+  const link = `${SITE()}/games/${game.slug}`;
+  const final = money(game.finalSalePrice);
+  const msgs = recipients.flatMap(({ user: u, guess, type, isAgent }) => {
+    if (!textable(u)) return [];
+    if (type === "WON" && (u.smsWinNotify || u.smsGameAlerts)) {
+      const prize = isAgent ? "You topped the Pro leaderboard!" : `You won a $${game.prizeAmount} Vanilla gift card! Check your email, we'll be in touch.`;
+      return [{ to: u.phone, type: "SMS_WON", gameId: game.id, body: `PriceRealEstateRight: Congrats ${u.firstName}! ${game.address} sold for ${final} and your guess of ${money(guess)} was closest. ${prize}` }];
+    }
+    if (type !== "WON" && u.smsGameAlerts) {
+      const how = type === "OVERBID" ? "you overbid" : "you bid too low";
+      return [{ to: u.phone, type: `SMS_${type}`, gameId: game.id, body: `PriceRealEstateRight: ${game.address} sold for ${final}. Your guess was ${money(guess)}, so ${how}. Results: ${link}` }];
+    }
+    return [];
+  });
+  return msgs.length ? sendSms(msgs) : 0;
+}
+
+/**
+ * Texts every player who asked for game alerts about games that are open now and haven't been announced yet.
+ * Runs automatically each Saturday morning (Vercel cron) and from the admin "Text players" page.
+ */
+export async function announceOpenGames() {
+  const now = new Date();
+  const fresh = await db.select().from(schema.games).where(and(
+    eq(schema.games.published, true), lte(schema.games.opensAt, now), gte(schema.games.closesAt, now),
+    sql`${schema.games.finalSalePrice} is null`, sql`${schema.games.announcedAt} is null`,
+  )).orderBy(asc(schema.games.closesAt));
+  if (!fresh.length) return { games: 0, texts: 0, players: 0 };
+  const players = await db.select().from(schema.users).where(and(eq(schema.users.smsConsent, true), eq(schema.users.smsGameAlerts, true), eq(schema.users.disabled, false)));
+  const where = fresh.length === 1 ? `${fresh[0].address}, ${fresh[0].city}` : `${fresh.length} homes, incl. ${fresh[0].address}, ${fresh[0].city}`;
+  const body = `PriceRealEstateRight: New game${fresh.length > 1 ? "s are" : " is"} live! Guess the sale price of ${where} and win a $${fresh[0].prizeAmount} Vanilla gift card. Play: ${SITE()}`;
+  const texts = await sendSms(players.filter(textable).map((u) => ({ to: u.phone, body, type: "SMS_NEW_GAMES", gameId: fresh.length === 1 ? fresh[0].id : undefined })));
+  await db.update(schema.games).set({ announcedAt: now }).where(inArray(schema.games.id, fresh.map((g) => g.id)));
+  return { games: fresh.length, texts, players: players.length };
 }
 
 // ---------- Leaderboards ----------

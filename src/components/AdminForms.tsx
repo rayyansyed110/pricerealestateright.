@@ -1,7 +1,7 @@
 "use client";
 import { useState } from "react";
 import {
-  sendMarketingAction,
+  sendMarketingAction, smsAction,
   addVideoAction, closeGameAction, saveGameAction, saveListingAgentAction, saveSettingsAction,
 } from "@/app/actions/admin";
 import { Msg, Submit, useForm } from "./ui";
@@ -199,6 +199,29 @@ export function MarketingForm({ address, optedIn }: { address: string; optedIn: 
         <button type="submit" name="mode" value="test" disabled={pending} className="btn-outline">{pending && mode === "test" ? "Sending…" : "Send test to me"}</button>
         <button type="submit" name="mode" value="all" disabled={pending || optedIn === 0} className="btn-green">{pending && mode === "all" ? "Sending…" : `Send to ${optedIn} subscribed player${optedIn === 1 ? "" : "s"}`}</button>
       </div>
+    </form>
+  );
+}
+
+export function SmsTestForm() {
+  const { state: s, onSubmit, pending } = useForm(smsAction);
+  return (
+    <form onSubmit={onSubmit} className="space-y-3">
+      <input type="hidden" name="op" value="test" />
+      <div><label className="label">Your mobile number</label><input name="phone" type="tel" required className="input max-w-xs" placeholder="(555) 123-4567" /></div>
+      <Msg state={s} />
+      <Submit pending={pending} className="btn-outline" pendingText="Sending…">Send test text</Submit>
+    </form>
+  );
+}
+
+export function SmsAnnounceForm({ players }: { players: number }) {
+  const { state: s, onSubmit, pending } = useForm(smsAction);
+  return (
+    <form onSubmit={(e) => { if (!confirm(`Text ${players} player(s) about games that are open now?`)) { e.preventDefault(); return; } onSubmit(e); }} className="space-y-3">
+      <input type="hidden" name="op" value="announce" />
+      <Msg state={s} />
+      <Submit pending={pending} pendingText="Sending…">Text players about new games now</Submit>
     </form>
   );
 }

@@ -6,7 +6,7 @@ export const metadata = { title: "Admin", robots: { index: false } };
 
 const NAV = [
   ["/admin", "Dashboard"], ["/admin/games", "Games / Listings"], ["/admin/videos", "Video Approvals"], ["/admin/users", "Users & Pros"],
-  ["/admin/agents", "Listing Agents"], ["/admin/payouts", "Winners & Payouts"], ["/admin/email", "Email Players"], ["/admin/emails", "Email Log"], ["/admin/settings", "Settings"],
+  ["/admin/agents", "Agents & Pros"], ["/admin/payouts", "Winners & Payouts"], ["/admin/email", "Email Players"], ["/admin/texts", "Text Players"], ["/admin/emails", "Email & Text Log"], ["/admin/settings", "Settings"],
 ];
 
 export default async function AdminLayout({ children }: { children: React.ReactNode }) {

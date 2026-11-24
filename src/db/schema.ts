@@ -107,6 +107,7 @@ export const games = pgTable("games", {
   finalSalePrice: integer("final_sale_price"),
   saleClosedAt: timestamp("sale_closed_at", { withTimezone: true }),
   resultsSentAt: timestamp("results_sent_at", { withTimezone: true }),
+  announcedAt: timestamp("announced_at", { withTimezone: true }), // when "new game is live" texts went out
   prizeAmount: integer("prize_amount").notNull().default(100),
   published: boolean("published").notNull().default(true),
   listingAgentId: text("listing_agent_id").references(() => agentProfiles.id, { onDelete: "set null" }),

@@ -6,7 +6,8 @@ import { and, asc, eq, ne, sql } from "drizzle-orm";
 import { fromZonedTime } from "date-fns-tz";
 import { db, schema } from "@/db";
 import { requireAdmin } from "@/lib/auth";
-import { closeGame } from "@/lib/game";
+import { announceOpenGames, closeGame } from "@/lib/game";
+import { sendSms, smsConfigured, toE164 } from "@/lib/sms";
 import { saveSettings, DEFAULT_SETTINGS, setTextSetting } from "@/lib/settings";
 import { sendMarketingEmail } from "@/lib/email";
 import { isProCategory, normalizeUrl } from "@/lib/pro";
@@ -173,7 +174,7 @@ export async function closeGameAction(_: FormState, fd: FormData): Promise<FormS
   const sendEmails = fd.get("sendEmails") === "on";
   const r = await closeGame(id, Math.round(price), { sendEmails });
   revalidatePath("/", "layout");
-  return { ok: `Game closed. ${r.publicWinner ? "Winner picked." : "No public guesses."} ${sendEmails ? `${r.emailsSent} result emails sent.` : "Emails not sent."}` };
+  return { ok: `Game closed. ${r.publicWinner ? "Winner picked." : "No public guesses."} ${sendEmails ? `${r.emailsSent} result emails and ${r.textsSent} texts sent.` : "Emails and texts not sent."}` };
 }
 
 export async function reopenGameAction(fd: FormData) {
@@ -288,4 +289,21 @@ export async function sendMarketingAction(_: FormState, fd: FormData): Promise<F
   const sent = await sendMarketingEmail(recipients, d.subject, d.message, d.mailingAddress, cta);
   const note = process.env.RESEND_API_KEY ? "" : " (Email service not set up yet, so they were only recorded in the Email Log.)";
   return { ok: d.mode === "test" ? `Test sent to ${admin.email}.${note}` : `Sent to ${sent} of ${recipients.length} players.${note}` };
+}
+
+/** Admin "Text Players" page: send a test text, or text everyone with game alerts about games open now. */
+export async function smsAction(_: FormState, fd: FormData): Promise<FormState> {
+  await requireAdmin();
+  const op = String(fd.get("op"));
+  if (op === "test") {
+    const to = toE164(String(fd.get("phone") || ""));
+    if (!to) return { error: "Enter a valid 10-digit US phone number." };
+    const n = await sendSms([{ to, type: "SMS_TEST", body: "PriceRealEstateRight: This is a test text. Texts are working!" }]);
+    if (!n) return { error: "The text failed. See the log below for Twilio's reason." };
+    return { ok: smsConfigured() ? `Test text sent to ${to}.` : `Twilio isn't set up yet, so the text was only recorded in the log.` };
+  }
+  const r = await announceOpenGames();
+  revalidatePath("/admin/texts");
+  if (!r.games) return { ok: "No new games to announce. Every open game has already been texted out." };
+  return { ok: `Announced ${r.games} game(s): ${r.texts} of ${r.players} players with game alerts were texted.` };
 }

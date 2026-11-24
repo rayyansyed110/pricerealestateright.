@@ -1,3 +1,9 @@
 {
-  "buildCommand": "npm run db:migrate && npm run db:seed && next build"
+  "buildCommand": "npm run db:migrate && npm run db:seed && next build",
+  "crons": [
+    {
+      "path": "/api/cron/new-games",
+      "schedule": "0 14 * * 6"
+    }
+  ]
 }

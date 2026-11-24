@@ -6,7 +6,7 @@ export default async function Emails() {
   const logs = await db.select().from(schema.emailLogs).orderBy(desc(schema.emailLogs.createdAt)).limit(300);
   return (
     <div className="space-y-4">
-      <h1 className="text-2xl font-extrabold">Email Log</h1>
+      <h1 className="text-2xl font-extrabold">Email & Text Log</h1>
       {!process.env.RESEND_API_KEY && <p className="rounded-lg bg-amber-50 p-3 text-sm text-amber-900">RESEND_API_KEY is not set, so emails are only logged (status &quot;logged&quot;), not delivered.</p>}
       <div className="card overflow-x-auto">
         <table className="table">
