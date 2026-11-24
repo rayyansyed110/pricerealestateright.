@@ -4,6 +4,7 @@ import { db, schema } from "@/db";
 import { getCurrentUser } from "@/lib/auth";
 import { fmtDate } from "@/lib/format";
 import { updateUserAction } from "@/app/actions/admin";
+import { proCategoryLabel } from "@/lib/pro";
 
 function Btn({ id, op, value, children, cls = "btn-outline btn-sm" }: { id: string; op: string; value?: string; children: React.ReactNode; cls?: string }) {
   return <form action={updateUserAction} className="inline"><input type="hidden" name="id" value={id} /><input type="hidden" name="op" value={op} />{value && <input type="hidden" name="value" value={value} />}<button className={cls}>{children}</button></form>;
@@ -21,34 +22,40 @@ export default async function Users({ searchParams }: { searchParams: Promise<{ 
   const c = new Map(counts.map((x) => [x.id, x.n]));
   return (
     <div className="space-y-4">
-      <h1 className="text-2xl font-extrabold">Users & Realtors</h1>
+      <h1 className="text-2xl font-extrabold">Users & Pros</h1>
       <div className="flex flex-wrap items-center gap-2">
         <form className="flex gap-2"><input name="q" defaultValue={q} placeholder="Search name or email" className="input w-64" /><button className="btn-navy btn-sm">Search</button></form>
         <Link href="/admin/users" className="btn-outline btn-sm">All</Link>
-        <Link href="/admin/users?filter=pending" className="btn-outline btn-sm">Realtors awaiting approval</Link>
-        <Link href="/admin/users?filter=agents" className="btn-outline btn-sm">Approved realtors</Link>
+        <Link href="/admin/users?filter=pending" className="btn-outline btn-sm">Pros awaiting approval</Link>
+        <Link href="/admin/users?filter=agents" className="btn-outline btn-sm">Approved pros</Link>
         <a href="/admin/users/export?format=xlsx" className="btn-green btn-sm">⬇ All players (Excel)</a>
         <a href="/admin/users/export?format=csv" className="btn-outline btn-sm">⬇ All players (CSV)</a>
         <a href="/admin/users/export?format=xlsx&list=marketing" className="btn-outline btn-sm">⬇ Email list, excludes unsubscribed (Excel)</a>
       </div>
       <div className="card overflow-x-auto">
         <table className="table">
-          <thead><tr><th>User</th><th>Joined</th><th>Guesses</th><th>Realtor</th><th>Promo emails</th><th>MLS bonus</th><th>Mortgage bonus</th><th>Actions</th></tr></thead>
+          <thead><tr><th>User</th><th>Joined</th><th>Guesses</th><th>Address</th><th>Real estate pro</th><th>Email / Text</th><th>MLS bonus</th><th>Mortgage bonus</th><th>Actions</th></tr></thead>
           <tbody>
             {users.map((u) => (
               <tr key={u.id} className={u.disabled ? "opacity-50" : ""}>
                 <td><div className="font-semibold">{u.firstName} {u.lastName} {u.role === "ADMIN" && <span className="pill bg-navy-900 text-white">Admin</span>}</div><div className="text-xs text-slate-500">{u.email} {u.phone && `· ${u.phone}`}</div></td>
                 <td className="text-xs">{fmtDate(u.createdAt)}</td>
                 <td>{c.get(u.id) ?? 0}</td>
+                <td className="text-xs">{u.addressLine1 ? <>{u.addressLine1}{u.addressLine2 ? `, ${u.addressLine2}` : ""}<br />{u.city}, {u.state} {u.zip}</> : <span className="text-slate-400">—</span>}</td>
                 <td className="text-xs">
                   {u.agentStatus === "NONE" ? "—" : <>
-                    <div><b>{u.agentStatus}</b> {u.agentProfile && `· ${u.agentProfile.brokerage}`}</div>
+                    <div><b>{u.agentStatus}</b> · {proCategoryLabel(u.agentProfile?.category)}</div>
+                    {u.agentProfile && <div>{u.agentProfile.brokerage}{u.agentProfile.companyCity ? `, ${u.agentProfile.companyCity}` : ""}{u.agentProfile.licenseState ? ` ${u.agentProfile.licenseState}` : ""}{u.agentProfile.brokerageLeaderboard ? " · Brokerage board ✓" : ""}</div>}
                     {u.agentProfile?.licenseNumber && <div>Lic: {u.agentProfile.licenseNumber} {u.agentProfile.licenseState}</div>}
                     {u.agentStatus !== "APPROVED" && <Btn id={u.id} op="approveAgent" cls="btn-green btn-sm mt-1">Approve</Btn>}
                     {u.agentStatus !== "REJECTED" && <> <Btn id={u.id} op="rejectAgent" cls="btn-outline btn-sm mt-1">{u.agentStatus === "APPROVED" ? "Revoke" : "Reject"}</Btn></>}
                   </>}
                 </td>
-                <td>{u.marketingOptIn ? <span className="pill bg-green-100 text-green-700">Subscribed</span> : <span className="pill bg-slate-100 text-slate-500">Unsubscribed</span>}</td>
+                <td className="space-y-1 text-xs">
+                  <div>{u.marketingOptIn ? <span className="pill bg-green-100 text-green-700">Email ✓</span> : <span className="pill bg-slate-100 text-slate-500">Email ✗</span>}</div>
+                  <div>{u.smsConsent ? <span className="pill bg-green-100 text-green-700">Texts ✓</span> : <span className="pill bg-slate-100 text-slate-500">Texts ✗</span>}</div>
+                  {(u.smsGameAlerts || u.smsWinNotify) && <div className="text-slate-500">{[u.smsGameAlerts && "game alerts", u.smsWinNotify && "win call/text"].filter(Boolean).join(", ")}</div>}
+                </td>
                 <td><Btn id={u.id} op="toggleMls" value={String(!u.usedMlsComps)} cls={u.usedMlsComps ? "btn-green btn-sm" : "btn-outline btn-sm"}>{u.usedMlsComps ? "On" : "Off"}</Btn></td>
                 <td><Btn id={u.id} op="toggleMortgage" value={String(!u.usedMortgageSite)} cls={u.usedMortgageSite ? "btn-green btn-sm" : "btn-outline btn-sm"}>{u.usedMortgageSite ? "On" : "Off"}</Btn></td>
                 <td className="whitespace-nowrap">

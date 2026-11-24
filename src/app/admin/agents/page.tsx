@@ -9,11 +9,11 @@ export default async function Agents({ searchParams }: { searchParams: Promise<{
   const editing = agents.find((a) => a.id === sp.edit);
   return (
     <div className="space-y-6">
-      <h1 className="text-2xl font-extrabold">Listing Agents</h1>
-      <p className="text-sm text-slate-500">Agents shown on game pages (the &quot;Agent Info&quot; card). Realtors who register get a profile automatically; you can also add agents who don&apos;t have an account.</p>
+      <h1 className="text-2xl font-extrabold">Agents &amp; Professionals</h1>
+      <p className="text-sm text-slate-500">Listing (seller&apos;s) agents and buyer&apos;s agents shown on game pages. Professionals who register get a profile automatically; you can also add agents who don&apos;t have an account here.</p>
       <section className="card p-6">
         <h2 className="mb-3 font-bold">{editing ? `Edit ${editing.displayName}` : "Add listing agent"}</h2>
-        <ListingAgentForm key={editing?.id ?? "new"} p={editing ? { id: editing.id, displayName: editing.displayName, brokerage: editing.brokerage, phone: editing.phone, email: editing.email, website: editing.website, bio: editing.bio, photoUrl: editing.photoUrl?.startsWith("http") ? editing.photoUrl : "" } : undefined} />
+        <ListingAgentForm key={editing?.id ?? "new"} p={editing ? { id: editing.id, displayName: editing.displayName, brokerage: editing.brokerage, phone: editing.phone, email: editing.email, website: editing.website, bio: editing.bio, category: editing.category, companyCity: editing.companyCity, licenseState: editing.licenseState, photoUrl: editing.photoUrl?.startsWith("http") ? editing.photoUrl : "" } : undefined} />
       </section>
       <div className="grid gap-3 sm:grid-cols-2">
         {agents.map((a) => (

@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { ladder } from "@/lib/game";
+import { brokerageLadder, ladder, type BrokerageRow } from "@/lib/game";
 import { getSettings } from "@/lib/settings";
 import { money } from "@/lib/format";
 
@@ -18,8 +18,9 @@ export default async function Leaderboards({ searchParams }: { searchParams: Pro
       </div>
       <div className="mt-6 grid gap-8 lg:grid-cols-2">
         <Board title="Public Ladder" subtitle={`#1 at year end wins the ${money(s.annualPrize)} Annual Grand Prize`} rows={pub} />
-        <Board title="Realtor Leaderboard" subtitle="Licensed agents competing for bragging rights" rows={agents} agent />
+        <Board title="Pro Leaderboard" subtitle="Real estate professionals competing for bragging rights" rows={agents} agent />
       </div>
+      <div className="mt-8"><BrokerageBoard rows={brokerageLadder(agents)} /></div>
     </div>
   );
 }
@@ -41,6 +42,29 @@ function Board({ title, subtitle, rows, agent }: { title: string; subtitle: stri
               </tr>
             ))}
             {!rows.length && <tr><td colSpan={8} className="py-8 text-center text-slate-500">No finished games yet.</td></tr>}
+          </tbody>
+        </table>
+      </div>
+    </section>
+  );
+}
+
+function BrokerageBoard({ rows }: { rows: BrokerageRow[] }) {
+  return (
+    <section className="card overflow-hidden">
+      <div className="bg-navy-900 p-4 text-white"><h2 className="text-xl font-bold">Brokerage Leaderboard</h2><p className="text-sm text-slate-300">Combined points of agents whose brokerage opted in</p></div>
+      <div className="overflow-x-auto">
+        <table className="table">
+          <thead><tr><th>#</th><th>Brokerage</th><th>Agents</th><th>Points</th><th>Wins</th><th>Avg error</th></tr></thead>
+          <tbody>
+            {rows.map((r, i) => (
+              <tr key={r.key} className={i === 0 ? "bg-amber-50" : ""}>
+                <td className="font-bold">{i + 1}</td>
+                <td><div className="font-semibold">{r.name}</div>{r.state && <div className="text-xs text-slate-500">{r.state}</div>}</td>
+                <td>{r.agents}</td><td className="font-bold">{r.points}</td><td>{r.wins}</td><td>{r.avgErrorPct.toFixed(1)}%</td>
+              </tr>
+            ))}
+            {!rows.length && <tr><td colSpan={6} className="py-8 text-center text-slate-500">No brokerages on the board yet. Agents can opt in from the Pro Hub.</td></tr>}
           </tbody>
         </table>
       </div>

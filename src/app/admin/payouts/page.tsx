@@ -17,7 +17,7 @@ export default async function Payouts() {
       <div className="grid gap-4 md:grid-cols-3">
         <Leader title={`${y} annual leader (so far)`} r={pubNow[0]} prize={s.annualPrize} />
         <Leader title={`${y - 1} annual winner`} r={pubLast[0]} prize={s.annualPrize} />
-        <Leader title={`${y} top realtor (so far)`} r={agNow[0]} prize={s.agentAnnualPrize} />
+        <Leader title={`${y} top real estate pro (so far)`} r={agNow[0]} prize={s.agentAnnualPrize} />
       </div>
       <div className="card overflow-x-auto">
         <table className="table">
@@ -27,7 +27,7 @@ export default async function Payouts() {
               <tr key={w.id}>
                 <td>{w.game.address}<div className="text-xs text-slate-500">Sold {money(w.game.finalSalePrice)} · {fmtDate(w.game.saleClosedAt)}</div></td>
                 <td>{w.user.firstName} {w.user.lastName}<div className="text-xs text-slate-500">{w.user.email} {w.user.phone && `· ${w.user.phone}`}</div></td>
-                <td>{w.isAgent ? "Realtor" : "Public"}</td>
+                <td>{w.isAgent ? "Pro" : "Public"}</td>
                 <td>{money(w.difference)}</td>
                 <td className="font-semibold">{money(w.prizeAmount)}</td>
                 <td>{w.prizeAmount > 0 ? (

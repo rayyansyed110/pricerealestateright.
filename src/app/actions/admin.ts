@@ -2,13 +2,14 @@
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { z } from "zod";
-import { and, eq, ne } from "drizzle-orm";
+import { and, asc, eq, ne, sql } from "drizzle-orm";
 import { fromZonedTime } from "date-fns-tz";
 import { db, schema } from "@/db";
 import { requireAdmin } from "@/lib/auth";
 import { closeGame } from "@/lib/game";
 import { saveSettings, DEFAULT_SETTINGS, setTextSetting } from "@/lib/settings";
 import { sendMarketingEmail } from "@/lib/email";
+import { isProCategory, normalizeUrl } from "@/lib/pro";
 import { saveImage } from "@/lib/uploads";
 import { slugify, TZ } from "@/lib/format";
 import type { FormState } from "./auth";
@@ -26,7 +27,8 @@ const gameSchema = z.object({
   beds: numish.refine((v) => v != null, "Beds required"),
   baths: numish.refine((v) => v != null, "Baths required"),
   sqft: intish.refine((v) => v != null, "Sq ft required"),
-  lotSize: z.string().trim().max(60).optional(),
+  lotSizeValue: numish,
+  lotSizeUnit: z.enum(["acres", "sq ft"]).optional(),
   yearBuilt: intish,
   propertyType: z.string().trim().max(60).optional(),
   lastSoldPrice: intish,
@@ -39,6 +41,7 @@ const gameSchema = z.object({
   closesAt: z.string().min(1, "Close date required"),
   prizeAmount: intish,
   listingAgentId: z.string().optional(),
+  buyerAgentId: z.string().optional(),
   published: z.literal("on").optional(),
 });
 
@@ -53,15 +56,15 @@ export async function saveGameAction(_: FormState, fd: FormData): Promise<FormSt
   const values = {
     address: d.address, city: d.city, state: d.state, zip: d.zip || null,
     listPrice: d.listPrice!, beds: d.beds!, baths: d.baths!, sqft: d.sqft!,
-    lotSize: d.lotSize || null, yearBuilt: d.yearBuilt ?? null, propertyType: d.propertyType || null,
+    lotSize: d.lotSizeValue != null ? `${Number(d.lotSizeValue).toLocaleString("en-US", { maximumFractionDigits: 3 })} ${d.lotSizeUnit ?? "acres"}` : null, yearBuilt: d.yearBuilt ?? null, propertyType: d.propertyType || null,
     lastSoldPrice: d.lastSoldPrice ?? null, lastSoldDate: d.lastSoldDate ? fromZonedTime(d.lastSoldDate, TZ) : null,
     features: d.features || null, description: d.description || null, mlsNumber: d.mlsNumber || null, mlsUrl: d.mlsUrl || null,
     opensAt, closesAt, prizeAmount: d.prizeAmount ?? DEFAULT_SETTINGS.gamePrize,
-    listingAgentId: d.listingAgentId || null, published: !!d.published,
+    listingAgentId: d.listingAgentId || null, buyerAgentId: d.buyerAgentId || null, published: !!d.published,
   };
   // videos entered on the new-listing form (validated before anything is saved)
   const newVideos: { type: "AGENT_PROMO" | "WALKTHROUGH" | "CLOSING"; title: string; url: string; agentId: string | null }[] = [];
-  for (let i = 0; i < 3; i++) {
+  for (let i = 0; i < 20; i++) {
     const url = String(fd.get(`video_url_${i}`) || "").trim();
     if (!url) continue;
     if (!/^https:\/\/\S+$/.test(url)) return { error: `Video ${i + 1}: link must start with https://` };
@@ -93,7 +96,7 @@ export async function saveGameAction(_: FormState, fd: FormData): Promise<FormSt
   }
   const existing = await db.select({ id: schema.photos.id }).from(schema.photos).where(eq(schema.photos.gameId, gid));
   for (const [i, url] of photoUrls.entries()) await db.insert(schema.photos).values({ gameId: gid, url, sortOrder: existing.length + i });
-  if (newVideos.length) await db.insert(schema.videos).values(newVideos.map((v) => ({ ...v, gameId: gid, approved: true })));
+  if (newVideos.length) await db.insert(schema.videos).values(newVideos.map((v, i) => ({ ...v, gameId: gid, approved: true, sortOrder: i })));
   revalidatePath("/", "layout");
   if (!id) redirect(`/admin/games/${gid}?created=1`);
   return { ok: "Game saved" };
@@ -130,9 +133,25 @@ export async function addVideoAction(_: FormState, fd: FormData): Promise<FormSt
     agentId: z.string().optional(),
   }).safeParse(Object.fromEntries(fd));
   if (!p.success) return { error: p.error.issues[0].message };
-  await db.insert(schema.videos).values({ ...p.data, agentId: p.data.agentId || null, approved: true });
+  const [{ m }] = await db.select({ m: sql<number>`coalesce(max(${schema.videos.sortOrder}), -1)::int` }).from(schema.videos).where(eq(schema.videos.gameId, p.data.gameId));
+  await db.insert(schema.videos).values({ ...p.data, agentId: p.data.agentId || null, approved: true, sortOrder: m + 1 });
   revalidatePath("/", "layout");
   return { ok: "Video added" };
+}
+
+/** Move a video up or down in its game's display order. */
+export async function moveVideoAction(fd: FormData) {
+  await requireAdmin();
+  const id = String(fd.get("id")); const dir = fd.get("dir") === "up" ? -1 : 1;
+  const v = await db.query.videos.findFirst({ where: eq(schema.videos.id, id) });
+  if (!v) return;
+  const list = await db.select({ id: schema.videos.id }).from(schema.videos).where(eq(schema.videos.gameId, v.gameId))
+    .orderBy(asc(schema.videos.sortOrder), asc(schema.videos.createdAt));
+  const i = list.findIndex((x) => x.id === id), j = i + dir;
+  if (j < 0 || j >= list.length) return;
+  [list[i], list[j]] = [list[j], list[i]];
+  for (const [k, x] of list.entries()) await db.update(schema.videos).set({ sortOrder: k }).where(eq(schema.videos.id, x.id));
+  revalidatePath("/", "layout");
 }
 
 export async function setVideoApprovalAction(fd: FormData) {
@@ -205,6 +224,7 @@ export async function saveSettingsAction(_: FormState, fd: FormData): Promise<Fo
     vals[k] = Math.round(n);
   }
   if (vals.baseGuesses < 1) return { error: "Players need at least 1 guess" };
+  if (vals.maxPerHousehold < 1) return { error: "Allow at least 1 player per household" };
   await saveSettings(vals);
   revalidatePath("/", "layout");
   return { ok: "Settings saved" };
@@ -217,17 +237,24 @@ export async function saveListingAgentAction(_: FormState, fd: FormData): Promis
     id: z.string().optional(),
     displayName: z.string().trim().min(2).max(80), brokerage: z.string().trim().min(2).max(120),
     phone: z.string().trim().max(30).optional(), email: z.string().trim().email().optional().or(z.literal("")),
-    website: z.string().trim().url().optional().or(z.literal("")), bio: z.string().trim().max(1000).optional(),
-    photoUrl: z.string().trim().url().optional().or(z.literal("")),
+    website: z.string().trim().max(200).optional(), bio: z.string().trim().max(1000).optional(),
+    photoUrl: z.string().trim().max(500).optional(),
+    category: z.string().optional(), companyCity: z.string().trim().max(80).optional(), licenseState: z.string().trim().max(2).optional(),
   }).safeParse(Object.fromEntries(fd));
   if (!p.success) return { error: p.error.issues[0].message };
   const { id, ...v } = p.data;
-  let photoUrl = v.photoUrl || null;
+  const website = normalizeUrl(v.website);
+  if (v.website && !website) return { error: "Website doesn't look like a web address (e.g. www.linktr.ee/name)" };
+  let photoUrl = v.photoUrl ? normalizeUrl(v.photoUrl) : null;
+  if (v.photoUrl && !photoUrl) return { error: "Photo URL doesn't look like a web address" };
   const photo = fd.get("photo");
   if (photo instanceof File && photo.size > 0) {
     try { photoUrl = await saveImage(photo); } catch (e) { return { error: (e as Error).message }; }
   }
-  const values = { ...v, email: v.email || null, website: v.website || null, photoUrl };
+  const values = {
+    ...v, email: v.email || null, website, photoUrl, category: isProCategory(v.category) ? v.category : "AGENT",
+    companyCity: v.companyCity || null, licenseState: v.licenseState?.toUpperCase() || null,
+  };
   if (id) {
     if (!photoUrl) delete (values as Record<string, unknown>).photoUrl;
     await db.update(schema.agentProfiles).set(values).where(eq(schema.agentProfiles.id, id));

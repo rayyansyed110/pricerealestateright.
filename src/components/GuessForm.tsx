@@ -10,8 +10,8 @@ type Props = {
 };
 
 export function GuessForm({ gameId, slug, listPrice, signedIn, remaining, allowed, compact }: Props) {
-  const min = Math.round((listPrice * 0.7) / 1000) * 1000;
-  const max = Math.round((listPrice * 1.3) / 1000) * 1000;
+  const min = Math.round((listPrice * 0.75) / 1000) * 1000;
+  const max = Math.round((listPrice * 1.5) / 1000) * 1000;
   const [value, setValue] = useState(listPrice);
   const [text, setText] = useState("");
   const { state: state, onSubmit: action, pending } = useForm(submitGuessAction);

@@ -9,7 +9,7 @@ Weekly "guess the sale price" game for homes under contract. Players and real es
 ## Features
 
 **Public site**
-- Home page: hero, this week's active games with countdown, pending games, recent results, "Who's Leading?" sidebar (Public Ladder / Realtor Leaderboard, $1,000 annual prize)
+- Home page: hero, this week's active games with countdown, pending games, recent results, "Who's Leading?" sidebar (Public Ladder / Pro Leaderboard, $1,000 annual prize)
 - Game page with photo gallery, property data (list price, beds/baths, sq ft, last sold price & date, features, description), link to the MLS comps sister site
 - Layout changes with media, matching the 4 mockup designs:
   1. No video → Agent Info card
@@ -18,9 +18,9 @@ Weekly "guess the sale price" game for homes under contract. Players and real es
   4. Closing & negotiation video (only after the game is closed, with "Closed & Sold" ribbon)
 - Guess slider plus typed amount. Other players' guesses stay hidden while guessing is open.
 - **Pending phase:** histogram of everyone's guesses, median, the player's own guess marked, and "higher than X% of players"
-- **Closed:** final sale price, winning guesses, top realtor, the player's own finishing position
+- **Closed:** final sale price, winning guesses, top real estate pro, the player's own finishing position
 - Leaderboards by year (points, wins, top-3 finishes, average error, accuracy streaks)
-- Realtor Hub: agents apply, build a profile, and post videos (reviewed by an admin, with no price mentions allowed)
+- Pro Hub: agents apply, build a profile, and post videos (reviewed by an admin, with no price mentions allowed)
 - Account page: my guesses, wins and payout status, bonus guesses, profile, password
 
 **Accounts & security**
@@ -34,11 +34,11 @@ Weekly "guess the sale price" game for homes under contract. Players and real es
 - Dashboard: active games, homes waiting for a sale price, agents and videos to approve, unpaid prizes
 - Create and edit listings: details, photos (upload or URL), cover photo, listing agent, weekly window, prize, publish toggle
 - Add, approve, hide or delete videos
-- **Close a game:** enter the final sale price. Winners are picked automatically for the public and realtor ladders, and result emails go out:
+- **Close a game:** enter the final sale price. Winners are picked automatically for the public and pro ladders, and result emails go out:
   1. "Congrats, you won!"
   2. "Sorry, you overbid and overpaid for your home"
   3. "Sorry, you bid too low and lost the home of your dreams"
-- Users: search, approve or reject realtors, toggle sister-site bonuses, disable accounts, make admins
+- Users: search, approve or reject real estate pros, toggle sister-site bonuses, disable accounts, make admins
 - Winners & payouts: mark prizes paid; current and previous annual leaders
 - Settings: guesses per game, bonus guesses, prize amounts
 - Email log
@@ -106,7 +106,7 @@ Admins can also switch bonuses on or off by hand on the Users page.
 
 ## Weekly admin routine
 1. **Before Saturday 3 AM:** Admin → Games → **New game** for each home (2 or more), with photos and, optionally, a listing agent and videos.
-2. **During the week:** approve agent videos and new realtors.
+2. **During the week:** approve agent videos and new real estate pros.
 3. **When a home's sale closes:** open the game, enter the **final sale price**, keep "Send result emails" checked, and click **Close game & pick winner**.
 4. **Pay winners**, then mark them paid under Winners & Payouts. In January, pay the annual winner shown there.
 

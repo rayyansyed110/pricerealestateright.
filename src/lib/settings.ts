@@ -8,8 +8,9 @@ export const DEFAULT_SETTINGS = {
   mortgageBonusGuesses: 1, // extra guesses ("additional chance") for PriceMortgageRight users
   gamePrize: 100, // default prize per game (public winner)
   annualPrize: 1000, // annual grand prize for the best public player
-  agentGamePrize: 0, // optional prize for best realtor guess per game
-  agentAnnualPrize: 0, // optional annual realtor prize
+  agentGamePrize: 0, // optional prize for best real estate pro guess per game
+  agentAnnualPrize: 0, // optional annual real estate pro prize
+  maxPerHousehold: 2, // max player accounts per household (same address)
 };
 export type Settings = typeof DEFAULT_SETTINGS;
 

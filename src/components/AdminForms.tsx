@@ -5,12 +5,16 @@ import {
   addVideoAction, closeGameAction, saveGameAction, saveListingAgentAction, saveSettingsAction,
 } from "@/app/actions/admin";
 import { Msg, Submit, useForm } from "./ui";
+import { PRO_CATEGORIES } from "@/lib/pro";
 
 type GameDefaults = Record<string, string | number | boolean | null | undefined>;
 
 export function GameForm({ g, agents, tzLabel }: { g: GameDefaults; agents: { id: string; label: string }[]; tzLabel: string }) {
   const { state: s, onSubmit: a, pending } = useForm(saveGameAction);
   const v = (k: string) => (g[k] == null ? "" : String(g[k]));
+  const lotRaw = v("lotSize");
+  const lotParts = { value: (lotRaw.match(/[\d.]+/) || [""])[0], unit: /sq|ft/i.test(lotRaw) ? "sq ft" : "acres" };
+  const [videoRows, setVideoRows] = useState(3);
   const F = ({ name, label, type = "text", req, ph, span }: { name: string; label: string; type?: string; req?: boolean; ph?: string; span?: string }) => (
     <div className={span}><label className="label">{label}{req && <span className="text-red-500"> *</span>}</label><input name={name} type={type} defaultValue={v(name)} required={req} placeholder={ph} className="input" step={type === "number" ? "any" : undefined} /></div>
   );
@@ -30,15 +34,24 @@ export function GameForm({ g, agents, tzLabel }: { g: GameDefaults; agents: { id
         {F({ name: "lastSoldPrice", label: "Last sold price ($)", span: "sm:col-span-2", })}
         {F({ name: "lastSoldDate", label: "Last sold date", type: "date", span: "sm:col-span-2", })}
         {F({ name: "yearBuilt", label: "Year built", type: "number", span: "sm:col-span-2", })}
-        {F({ name: "lotSize", label: "Lot size", ph: "0.25 acres", span: "sm:col-span-2", })}
+        <div className="sm:col-span-2"><label className="label">Lot size</label>
+          <div className="flex gap-2">
+            <input name="lotSizeValue" type="number" step="any" min="0" defaultValue={lotParts.value} placeholder="0.25" className="input" />
+            <select name="lotSizeUnit" defaultValue={lotParts.unit} className="input w-28"><option value="acres">acres</option><option value="sq ft">sq ft</option></select>
+          </div>
+        </div>
         {F({ name: "propertyType", label: "Property type", ph: "Single Family", span: "sm:col-span-2", })}
         {F({ name: "mlsNumber", label: "MLS #", span: "sm:col-span-2", })}
         {F({ name: "mlsUrl", label: "Link to listing / comps on MLS sister site", type: "url", ph: "https://", span: "sm:col-span-6" })}
         <div className="sm:col-span-6"><label className="label">Features (comma or one per line)</label><textarea name="features" rows={2} defaultValue={v("features")} placeholder="Hardwood floors, updated kitchen, large backyard" className="input" /></div>
         <div className="sm:col-span-6"><label className="label">Description</label><textarea name="description" rows={4} defaultValue={v("description")} className="input" /></div>
-        <div className="sm:col-span-3"><label className="label">Listing agent (shown on Agent Info card)</label>
+        <div className="sm:col-span-3"><label className="label">Listing agent (seller&apos;s agent)</label>
           <select name="listingAgentId" defaultValue={v("listingAgentId")} className="input"><option value="">— None —</option>{agents.map((x) => <option key={x.id} value={x.id}>{x.label}</option>)}</select>
         </div>
+        <div className="sm:col-span-3"><label className="label">Buyer&apos;s agent</label>
+          <select name="buyerAgentId" defaultValue={v("buyerAgentId")} className="input"><option value="">— None —</option>{agents.map((x) => <option key={x.id} value={x.id}>{x.label}</option>)}</select>
+        </div>
+        <p className="-mt-2 text-xs text-slate-500 sm:col-span-6">Both agents are shown on the game page with a link to their page. Add new agents under Admin → Agents &amp; Professionals.</p>
       </fieldset>
 
       <fieldset className="grid gap-4 sm:grid-cols-6">
@@ -58,10 +71,10 @@ export function GameForm({ g, agents, tzLabel }: { g: GameDefaults; agents: { id
         <fieldset className="space-y-3">
           <legend className="mb-2 text-sm font-bold uppercase text-slate-500">Add videos (optional)</legend>
           <p className="text-xs text-slate-500">Paste YouTube, Vimeo or .mp4 links. Leave a row empty to skip it. Videos must not mention the price. Closing videos only show after the game is closed.</p>
-          {[0, 1, 2].map((i) => (
+          {Array.from({ length: videoRows }, (_, i) => i).map((i) => (
             <div key={i} className="grid gap-3 rounded-lg border border-slate-200 p-3 sm:grid-cols-12">
               <div className="sm:col-span-3"><label className="label">Type</label>
-                <select name={`video_type_${i}`} defaultValue={["AGENT_PROMO", "WALKTHROUGH", "CLOSING"][i]} className="input">
+                <select name={`video_type_${i}`} defaultValue={["AGENT_PROMO", "WALKTHROUGH", "CLOSING"][i] ?? "WALKTHROUGH"} className="input">
                   <option value="AGENT_PROMO">Agent promo / neighborhood intro</option>
                   <option value="WALKTHROUGH">Property walkthrough & features</option>
                   <option value="CLOSING">Closing & negotiation (after close)</option>
@@ -74,6 +87,8 @@ export function GameForm({ g, agents, tzLabel }: { g: GameDefaults; agents: { id
               </div>
             </div>
           ))}
+          {videoRows < 20 && <button type="button" onClick={() => setVideoRows(videoRows + 1)} className="btn-outline btn-sm">+ Add another video</button>}
+          <p className="text-xs text-slate-500">You can add several videos of the same type. They appear in this order; you can reorder them later on the game&apos;s Manage page.</p>
         </fieldset>
       )}
       <Msg state={s} />
@@ -124,8 +139,9 @@ export function SettingsForm({ s: values }: { s: Record<string, number> }) {
     ["mortgageBonusGuesses", "Extra guesses for PriceMortgageRight.com users"],
     ["gamePrize", "Default prize per game ($)"],
     ["annualPrize", "Annual grand prize ($)"],
-    ["agentGamePrize", "Realtor prize per game ($, 0 = none)"],
-    ["agentAnnualPrize", "Realtor annual prize ($, 0 = none)"],
+    ["agentGamePrize", "Pro prize per game ($, 0 = none)"],
+    ["agentAnnualPrize", "Pro annual prize ($, 0 = none)"],
+    ["maxPerHousehold", "Max players per household"],
   ];
   return (
     <form onSubmit={a} className="grid max-w-2xl gap-4 sm:grid-cols-2">
@@ -142,11 +158,15 @@ export function ListingAgentForm({ p }: { p?: Record<string, string | null> }) {
     <form onSubmit={a} className="grid gap-3 sm:grid-cols-2">
       {p?.id && <input type="hidden" name="id" value={p.id} />}
       <div><label className="label">Name</label><input name="displayName" defaultValue={v("displayName")} required className="input" /></div>
-      <div><label className="label">Brokerage</label><input name="brokerage" defaultValue={v("brokerage")} required className="input" /></div>
+      <div><label className="label">Category</label>
+        <select name="category" defaultValue={v("category") || "AGENT"} className="input">{Object.entries(PRO_CATEGORIES).map(([k, l]) => <option key={k} value={k}>{l}</option>)}</select>
+      </div>
+      <div><label className="label">Brokerage / company</label><input name="brokerage" defaultValue={v("brokerage")} required className="input" /></div>
+      <div className="grid grid-cols-3 gap-3"><div className="col-span-2"><label className="label">City</label><input name="companyCity" defaultValue={v("companyCity")} className="input" /></div><div><label className="label">State</label><input name="licenseState" maxLength={2} defaultValue={v("licenseState")} className="input uppercase" /></div></div>
       <div><label className="label">Phone</label><input name="phone" defaultValue={v("phone")} className="input" /></div>
       <div><label className="label">Email</label><input name="email" type="email" defaultValue={v("email")} className="input" /></div>
-      <div><label className="label">Website</label><input name="website" type="url" defaultValue={v("website")} className="input" /></div>
-      <div><label className="label">Photo URL</label><input name="photoUrl" type="url" defaultValue={v("photoUrl")} className="input" /></div>
+      <div><label className="label">Their page / website</label><input name="website" defaultValue={v("website")} placeholder="www.linktr.ee/name" className="input" /></div>
+      <div><label className="label">Photo URL</label><input name="photoUrl" defaultValue={v("photoUrl")} placeholder="https://…" className="input" /></div>
       <div className="sm:col-span-2"><label className="label">…or upload photo</label><input name="photo" type="file" accept="image/*" className="text-sm" /></div>
       <div className="sm:col-span-2"><label className="label">Bio</label><textarea name="bio" rows={2} defaultValue={v("bio")} className="input" /></div>
       <div className="space-y-2 sm:col-span-2"><Msg state={s} /><Submit pending={pending}>{p?.id ? "Save agent" : "Add agent"}</Submit></div>

@@ -5,7 +5,7 @@ export const dynamic = "force-dynamic";
 export const metadata = { title: "Admin", robots: { index: false } };
 
 const NAV = [
-  ["/admin", "Dashboard"], ["/admin/games", "Games / Listings"], ["/admin/videos", "Video Approvals"], ["/admin/users", "Users & Realtors"],
+  ["/admin", "Dashboard"], ["/admin/games", "Games / Listings"], ["/admin/videos", "Video Approvals"], ["/admin/users", "Users & Pros"],
   ["/admin/agents", "Listing Agents"], ["/admin/payouts", "Winners & Payouts"], ["/admin/email", "Email Players"], ["/admin/emails", "Email Log"], ["/admin/settings", "Settings"],
 ];
 

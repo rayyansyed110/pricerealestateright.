@@ -49,7 +49,7 @@ export default async function Account({ searchParams }: { searchParams: Promise<
             <section className="card p-5">
               <h2 className="text-lg font-bold">🏆 My Wins</h2>
               <ul className="mt-2 space-y-1 text-sm">
-                {wins.map((w) => <li key={w.id}>{w.game.address} — {w.prizeAmount ? money(w.prizeAmount) : "Top realtor"} {w.prizeAmount > 0 && (w.paid ? <span className="pill bg-green-100 text-green-700">Paid</span> : <span className="pill bg-amber-100 text-amber-800">Payout pending</span>)}</li>)}
+                {wins.map((w) => <li key={w.id}>{w.game.address} — {w.prizeAmount ? money(w.prizeAmount) : "Top pro"} {w.prizeAmount > 0 && (w.paid ? <span className="pill bg-green-100 text-green-700">Paid</span> : <span className="pill bg-amber-100 text-amber-800">Payout pending</span>)}</li>)}
               </ul>
             </section>
           )}
@@ -64,7 +64,7 @@ export default async function Account({ searchParams }: { searchParams: Promise<
             </ul>
             <p className="mt-3 text-xs text-slate-500">Use the same email ({u.email}) on our sister sites and your bonus is applied automatically.</p>
           </section>
-          <section className="card p-5"><h2 className="mb-3 text-lg font-bold">Profile</h2><ProfileForm u={{ firstName: u.firstName, lastName: u.lastName, phone: u.phone, city: u.city, marketingOptIn: u.marketingOptIn }} /></section>
+          <section className="card p-5"><h2 className="mb-3 text-lg font-bold">Profile</h2><ProfileForm u={{ firstName: u.firstName, lastName: u.lastName, phone: u.phone, marketingOptIn: u.marketingOptIn, smsConsent: u.smsConsent, smsGameAlerts: u.smsGameAlerts, smsWinNotify: u.smsWinNotify }} /></section>
           <section className="card p-5"><h2 className="mb-3 text-lg font-bold">Password</h2><PasswordForm /></section>
         </div>
       </div>

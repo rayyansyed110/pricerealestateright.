@@ -31,3 +31,6 @@ export function slugify(s: string) {
 export function featureList(f: string | null | undefined) {
   return (f || "").split(/[\n,]+/).map((x) => x.trim()).filter(Boolean);
 }
+
+/** Game prizes are paid as Vanilla gift cards. */
+export const giftCard = (n: number | null | undefined) => `${money(n)} Vanilla gift card`;

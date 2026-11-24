@@ -1,6 +1,6 @@
 import Link from "next/link";
 import { getCurrentUser } from "@/lib/auth";
-import { ladder, listGames, weeklyWindow } from "@/lib/game";
+import { brokerageLadder, ladder, listGames, weeklyWindow } from "@/lib/game";
 import { getSettings } from "@/lib/settings";
 import { guessInfo } from "@/lib/player";
 import { money } from "@/lib/format";
@@ -23,11 +23,11 @@ export default async function Home() {
       <section className="relative overflow-hidden bg-gradient-to-b from-navy-800 to-navy-950 text-white">
         <HeroArt />
         <div className="container-x relative py-12 text-center sm:py-16">
-          <h1 className="text-4xl font-black uppercase tracking-tight sm:text-6xl">Guess the Sale Price, <span className="text-amber-400">Win Cash!</span></h1>
+          <h1 className="text-4xl font-black uppercase tracking-tight sm:text-6xl">Guess the Sale Price, <span className="text-amber-400">Win $100!</span></h1>
           <p className="mx-auto mt-3 max-w-2xl text-lg text-slate-200">Players &amp; Agents compete weekly to predict final sale prices of homes on contract.</p>
           <div className="mt-7 flex flex-wrap items-center justify-center gap-3">
             <Link href={user ? "#games" : "/register"} className="btn-green px-6 py-3 text-base">Start Guessing Now</Link>
-            <Link href="/realtor-hub" className="btn-ghost-light px-6 py-3 text-base">Are You an Agent? Play Here</Link>
+            <Link href="/pro-hub" className="btn-ghost-light px-6 py-3 text-base">Real Estate Pro? Play Here</Link>
             <a href={mls} target="_blank" rel="noopener" className="flex items-center gap-2 rounded-lg bg-white/10 px-4 py-2.5 text-left text-sm ring-1 ring-white/20 hover:bg-white/15">
               <span className="text-2xl">🏅</span><span>Get <b className="text-amber-300">{settings.mlsBonusGuesses} extra guess</b> by using our<br />sister MLS comps site</span>
             </a>
@@ -78,7 +78,8 @@ export default async function Home() {
           )}
         </div>
         <div className="lg:sticky lg:top-20 lg:self-start">
-          <LeaderboardWidget pub={pub} agents={agents} annualPrize={settings.annualPrize} />
+          <LeaderboardWidget pub={pub} agents={agents} annualPrize={settings.annualPrize}
+            brokerages={brokerageLadder(agents).map((b) => ({ userId: b.key, name: b.name, city: b.state, brokerage: `${b.state ? b.state + " · " : ""}${b.agents} agent${b.agents === 1 ? "" : "s"}`, points: b.points, wins: b.wins, streak: b.agents, avgErrorPct: b.avgErrorPct }))} />
         </div>
       </section>
     </>

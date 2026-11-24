@@ -2,6 +2,9 @@
 const nextConfig = {
   images: { remotePatterns: [{ protocol: "https", hostname: "**" }] },
   experimental: { serverActions: { bodySizeLimit: "15mb" } },
+  async redirects() {
+    return [{ source: "/realtor-hub", destination: "/pro-hub", permanent: true }];
+  },
   async headers() {
     return [{
       source: "/(.*)",

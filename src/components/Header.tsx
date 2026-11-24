@@ -8,7 +8,7 @@ const NAV = [
   { href: "/games", label: "Current Games" },
   { href: "/how-it-works", label: "How It Works" },
   { href: "/leaderboards", label: "Leaderboards" },
-  { href: "/realtor-hub", label: "Realtor Hub" },
+  { href: "/pro-hub", label: "Pro Hub" },
 ];
 
 export async function Header() {

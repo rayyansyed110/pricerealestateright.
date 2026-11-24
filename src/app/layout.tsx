@@ -4,8 +4,8 @@ import { Header } from "@/components/Header";
 import { Footer } from "@/components/Footer";
 
 export const metadata: Metadata = {
-  title: { default: "PriceRealEstateRight.com — Guess the Sale Price, Win Cash!", template: "%s · PriceRealEstateRight" },
-  description: "Players and agents compete weekly to predict the final sale prices of homes on contract. Closest guess wins $100.",
+  title: { default: "PriceRealEstateRight.com — Guess the Sale Price, Win $100!", template: "%s · PriceRealEstateRight" },
+  description: "Players and agents compete weekly to predict the final sale prices of homes on contract. Closest guess wins a $100 Vanilla gift card.",
   metadataBase: new URL(process.env.APP_URL || "http://localhost:3000"),
 };
 

@@ -3,7 +3,7 @@ import { Resend } from "resend";
 import { db, schema } from "@/db";
 import type { Game, User } from "@/db/schema";
 import { createHmac, timingSafeEqual } from "crypto";
-import { fmtDateTime, money } from "./format";
+import { fmtDateTime, giftCard, money } from "./format";
 
 const APP_URL = process.env.APP_URL || "http://localhost:3000";
 const FROM = process.env.EMAIL_FROM || "PriceRealEstateRight <onboarding@resend.dev>";
@@ -78,9 +78,9 @@ export async function sendResultEmails(
       <b>${esc(addr)}</b><br/>Final sale price: <b>${final}</b><br/>Your closest guess: <b>${money(guess)}</b>
       (${guess >= game.finalSalePrice! ? "+" : "−"}${money(Math.abs(guess - game.finalSalePrice!))})</p>`;
     if (type === "WON") {
-      const prize = isAgent ? "" : `<p>You've won <b>${money(game.prizeAmount)}</b>! We'll reach out to you shortly about collecting your prize.</p>`;
+      const prize = isAgent ? "" : `<p>You've won a <b>${giftCard(game.prizeAmount)}</b>! We'll reach out to you shortly to send your prize.</p>`;
       return { to: user.email, type, gameId: game.id, subject: `🎉 Congrats, you won! ${game.address} sold for ${final}`,
-        html: layout("Congratulations — you won!", `${hi}<p>Your guess was the closest on the ${isAgent ? "Realtor leaderboard" : "public ladder"}.</p>${facts}${prize}`, { label: "See the final results", href: link }) };
+        html: layout("Congratulations — you won!", `${hi}<p>Your guess was the closest on the ${isAgent ? "Pro leaderboard" : "public ladder"}.</p>${facts}${prize}`, { label: "See the final results", href: link }) };
     }
     if (type === "OVERBID") {
       return { to: user.email, type, gameId: game.id, subject: `Sorry, you overbid on ${game.address}`,
@@ -100,7 +100,7 @@ export async function sendPasswordResetEmail(to: string, name: string, token: st
 
 export async function sendWelcomeEmail(to: string, name: string) {
   await deliver([{ to, type: "WELCOME", subject: "Welcome to PriceRealEstateRight — start guessing!",
-    html: layout(`Welcome, ${esc(name)}!`, `<p>Every week starting Saturday 3 AM, new homes that are under contract go live. Guess the final sale price — the closest guess wins <b>$100</b>, and the best player of the year wins <b>$1,000</b>.</p><p>Tip: research comps on our MLS sister site to earn an extra guess on every game.</p>`, { label: "See this week's games", href: APP_URL }) }]);
+    html: layout(`Welcome, ${esc(name)}!`, `<p>Every week starting Saturday 3 AM, new homes that are under contract go live. Guess the final sale price — the closest guess wins a <b>$100 Vanilla gift card</b>, and the best player of the year wins <b>$1,000</b>.</p><p>Tip: research comps on our MLS sister site to earn an extra guess on every game.</p>`, { label: "See this week's games", href: APP_URL }) }]);
 }
 
 export async function sendGuessConfirmation(user: { email: string; firstName: string }, game: Game, amount: number, left: number) {
@@ -110,7 +110,7 @@ export async function sendGuessConfirmation(user: { email: string; firstName: st
     html: layout("Your guess is locked in!", `<p>Hi ${esc(user.firstName)},</p>
       <p>We got your guess for <b>${esc(game.address)}, ${esc(game.city)}, ${esc(game.state)}</b>.</p>
       <p style="background:#f1f5f9;border-radius:8px;padding:12px 14px;line-height:1.6">Your guess: <b>${money(amount)}</b><br/>Guessing closes: ${fmtDateTime(game.closesAt)}${left > 0 ? `<br/>Guesses left for this home: <b>${left}</b>` : ""}</p>
-      <p>After guessing closes you'll be able to see how everyone else guessed. When the home's sale closes, we'll email you your result. The closest guess wins <b>${money(game.prizeAmount)}</b>.</p>`,
+      <p>After guessing closes you'll be able to see how everyone else guessed. When the home's sale closes, we'll email you your result. The closest guess wins a <b>${giftCard(game.prizeAmount)}</b>.</p>`,
       { label: "View the game", href: link }) }]);
 }
 

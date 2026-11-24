@@ -23,7 +23,7 @@ export function GameCard({ game, signedIn, remaining, allowed, guessCount }: { g
         <div className="absolute left-3 top-3"><StatusPill status={status} /></div>
         {status === "OPEN" && (
           <div className="absolute right-3 top-3 flex h-14 w-14 rotate-12 flex-col items-center justify-center rounded-full bg-amber-400 text-center text-[10px] font-extrabold leading-tight text-amber-950 shadow-lg ring-2 ring-amber-200">
-            {money(game.prizeAmount)}<span className="font-semibold">Prize</span>
+            {money(game.prizeAmount)}<span className="font-semibold">Gift card</span>
           </div>
         )}
         <div className="absolute inset-x-3 bottom-3 text-white">

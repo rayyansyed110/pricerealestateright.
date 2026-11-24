@@ -1,6 +1,6 @@
 import Link from "next/link";
 import { getSettings } from "@/lib/settings";
-import { money } from "@/lib/format";
+import { giftCard, money } from "@/lib/format";
 
 export const dynamic = "force-dynamic";
 export const metadata = { title: "How It Works & Official Rules" };
@@ -11,7 +11,7 @@ export default async function HowItWorks() {
     ["1", "New homes every Saturday", "Every Saturday at 3:00 AM, at least two homes that are currently under contract go live. Guessing stays open until Friday at 11:59 PM."],
     ["2", "Research & guess", "Study the photos, details, agent videos and comparable sales on our MLS sister site, then submit your guess of the final sale price."],
     ["3", "Watch the pending phase", "When guessing closes, everyone's guesses are revealed so you can see where you stand while the sale is pending."],
-    ["4", "Home closes → winner picked", `When the sale closes and the price is public record, the closest guess wins ${money(s.gamePrize)}. Everyone gets an email with their result.`],
+    ["4", "Home closes → winner picked", `When the sale closes and the price is public record, the closest guess wins a ${giftCard(s.gamePrize)}. Everyone gets an email with their result.`],
   ];
   return (
     <div className="container-x max-w-4xl py-10">
@@ -27,12 +27,14 @@ export default async function HowItWorks() {
       <div className="card mt-8 p-6 text-sm leading-relaxed text-slate-700">
         <h2 className="text-lg font-bold text-navy-900">Prizes & Rules</h2>
         <ul className="mt-3 list-disc space-y-2 pl-5">
-          <li><b>Game prize:</b> the public player whose guess is closest to the final sale price wins {money(s.gamePrize)}. Ties go to the earliest guess.</li>
+          <li><b>Game prize:</b> the public player whose guess is closest to the final sale price wins a <b>{giftCard(s.gamePrize)}</b>. Ties go to the earliest guess.</li>
+          <li><b>Households:</b> limit {s.maxPerHousehold} players per household (same home address). Extra accounts from the same household can be disqualified.</li>
+          <li><b>No insider information:</b> by playing, you agree that you do not have insider information on the price of properties in contract, or any other insider information that would give you a leg up on others. That includes the listing or buyer&apos;s agents, sellers, buyers, lenders and anyone else involved in the sale. Players found using insider information are disqualified.</li>
           <li><b>Annual grand prize:</b> the #1 player on the public ladder at the end of the calendar year wins {money(s.annualPrize)}.</li>
           <li><b>Ladder points:</b> every finished game you play earns 1 point, plus 10 for 1st, 7 for 2nd, 5 for 3rd, 3 for 4th–5th and 2 for 6th–10th. Ties on points go to the lowest average error.</li>
           <li><b>Streaks:</b> a streak counts consecutive games where your best guess was within 5% of the final price.</li>
           <li><b>Guesses:</b> every player gets {s.baseGuesses} guess{s.baseGuesses > 1 ? "es" : ""} per home. Users of our MLS comps site get +{s.mlsBonusGuesses}, and PriceMortgageRight.com users get +{s.mortgageBonusGuesses}. Your closest guess counts.</li>
-          <li><b>Realtors</b> compete on their own Realtor Leaderboard and are not eligible for the public game prizes.</li>
+          <li><b>Real estate professionals</b> (agents/brokers, lawyers, inspectors, insurance, mortgage, title and others) compete on their own Pro Leaderboard and are not eligible for the public game prizes. Agents can also enter their brokerage on the Brokerage Leaderboard.</li>
           <li>Other players&apos; guesses are hidden until guessing closes.</li>
           <li>Agents may post videos about themselves, the home and negotiation tactics, but may never mention price.</li>
           <li>One account per person. Duplicate accounts are disqualified. No purchase necessary.</li>

@@ -21,7 +21,7 @@ export default async function AdminHome() {
     ["Registered users", users, "/admin/users"],
     ["Active games", active.length, "/admin/games"],
     ["Awaiting final sale price", pending.length, "/admin/games"],
-    ["Realtors to approve", agentsPending, "/admin/users?filter=pending"],
+    ["Pros to approve", agentsPending, "/admin/users?filter=pending"],
     ["Videos to approve", videosPending, "/admin/videos"],
     [`Unpaid prizes (${money(unpaid[0]?.total ?? 0)})`, unpaid[0]?.n ?? 0, "/admin/payouts"],
   ] as const;

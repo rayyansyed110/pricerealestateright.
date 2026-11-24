@@ -38,11 +38,17 @@ export default async function GamePage({ params }: { params: Promise<{ slug: str
     name: g.isAgent && g.user.agentProfile ? g.user.agentProfile.displayName : `${g.user.firstName} ${g.user.lastName.charAt(0)}.`,
   }));
 
-  const v = (t: keyof typeof VIDEO_LABELS) => game.videos.find((x) => x.type === t);
-  const closingVideo = status === "CLOSED" ? v("CLOSING") : undefined;
-  const promo = v("AGENT_PROMO"), walk = v("WALKTHROUGH");
-  const featuredAgent = (closingVideo ?? promo ?? walk)?.agent ?? game.listingAgent;
-  const stats = featuredAgent ? await agentQuickStats(featuredAgent.id) : null;
+  // Videos keep the order the admin set. The first one is featured in the game card; all are listed below the details.
+  const closingVideo = status === "CLOSED" ? game.videos.find((x) => x.type === "CLOSING") : undefined;
+  const preVideos = game.videos.filter((x) => x.type !== "CLOSING");
+  const featured = closingVideo ?? preVideos[0];
+  const listedVideos = status === "CLOSED" ? game.videos : preVideos;
+  const agents = [
+    game.listingAgent && { agent: game.listingAgent, role: "Listing agent" },
+    game.buyerAgent && { agent: game.buyerAgent, role: "Buyer's agent" },
+  ].filter(Boolean) as { agent: NonNullable<typeof game.listingAgent>; role: string }[];
+  if (!agents.length && featured?.agent) agents.push({ agent: featured.agent, role: "Agent" });
+  const agentStats = await Promise.all(agents.map((a) => agentQuickStats(a.agent.id)));
   const cover = game.photos[0]?.url;
   const mls = game.mlsUrl || process.env.NEXT_PUBLIC_MLS_SITE_URL;
 
@@ -78,24 +84,21 @@ export default async function GamePage({ params }: { params: Promise<{ slug: str
             </div>
 
             <div className="space-y-4 p-4">
-              {closingVideo ? (
-                <VideoPlayer url={closingVideo.url} title={closingVideo.title || "Closing & Negotiation"} poster={cover} agentPhoto={closingVideo.agent?.photoUrl} badge="Closed & Sold" />
-              ) : promo ? (
-                <VideoPlayer url={promo.url} title={promo.title || VIDEO_LABELS.AGENT_PROMO} poster={cover} agentPhoto={promo.agent?.photoUrl} />
-              ) : walk ? (
-                <VideoPlayer url={walk.url} title={walk.title || VIDEO_LABELS.WALKTHROUGH} poster={game.photos[1]?.url ?? cover} />
-              ) : game.listingAgent ? (
+              {featured ? (
+                <VideoPlayer url={featured.url} title={featured.title || VIDEO_LABELS[featured.type]} poster={featured.type === "WALKTHROUGH" ? game.photos[1]?.url ?? cover : cover}
+                  agentPhoto={featured.type === "WALKTHROUGH" ? null : featured.agent?.photoUrl} badge={featured === closingVideo ? "Closed & Sold" : undefined} />
+              ) : agents.length ? (
                 <>
                   <div className="flex items-center justify-between"><h3 className="text-lg font-bold">Agent Info</h3>{status === "OPEN" && <Countdown to={game.closesAt.toISOString()} />}</div>
-                  <AgentInfo agent={game.listingAgent} />
+                  {agents.map((a) => <AgentInfo key={a.role} agent={a.agent} role={a.role} />)}
                 </>
               ) : null}
 
-              {featuredAgent && (closingVideo || promo || walk) && <AgentMini agent={featuredAgent} stats={stats} />}
+              {featured && agents.map((a, i) => <AgentMini key={a.role} agent={a.agent} role={a.role} stats={agentStats[i]} />)}
 
               {status === "OPEN" && (
                 <>
-                  {(closingVideo || promo || walk || !game.listingAgent) && <div className="text-center"><Countdown to={game.closesAt.toISOString()} /></div>}
+                  {(featured || !agents.length) && <div className="text-center"><Countdown to={game.closesAt.toISOString()} /></div>}
                   <GuessForm gameId={game.id} slug={game.slug} listPrice={game.listPrice} signedIn={!!user} remaining={Math.max(0, allowed - mine.length)} allowed={allowed} />
                   {mine.length > 0 && (
                     <div className="rounded-lg bg-slate-50 p-3 text-sm">
@@ -134,7 +137,7 @@ export default async function GamePage({ params }: { params: Promise<{ slug: str
                     </ol>
                     {ranked.length === 0 && <p className="text-center text-sm text-slate-500">No public guesses.</p>}
                   </div>
-                  {rankedAgents[0] && <div className="rounded-md bg-white p-2 text-sm">🏅 Top Realtor: <b>{nameOf.get(rankedAgents[0].userId)}</b> — {money(rankedAgents[0].amount)}</div>}
+                  {rankedAgents[0] && <div className="rounded-md bg-white p-2 text-sm">🏅 Top Pro: <b>{nameOf.get(rankedAgents[0].userId)}</b> — {money(rankedAgents[0].amount)}</div>}
                   {user && mine.length > 0 && (() => {
                     const list = mine[0].isAgent ? rankedAgents : ranked;
                     const pos = list.findIndex((r) => r.userId === user.id);
@@ -176,14 +179,15 @@ export default async function GamePage({ params }: { params: Promise<{ slug: str
             <a href={mls} target="_blank" rel="noopener" className="btn-green shrink-0">Research comps ↗</a>
           </div>}
 
-          {(promo || walk) && (
+          {listedVideos.length > 0 && (
             <div id="videos" className="card space-y-4 p-5">
-              <h2 className="text-lg font-bold">Agent Videos</h2>
+              <h2 className="text-lg font-bold">Videos</h2>
               <div className="grid gap-4 sm:grid-cols-2">
-                {[promo, walk].filter(Boolean).map((vid) => (
-                  <div key={vid!.id}>
-                    <VideoPlayer url={vid!.url} title={vid!.title} poster={vid!.type === "WALKTHROUGH" ? game.photos[1]?.url ?? cover : cover} agentPhoto={vid!.type === "AGENT_PROMO" ? vid!.agent?.photoUrl : null} />
-                    {vid!.description && <p className="mt-2 text-sm text-slate-600">{vid!.description}</p>}
+                {listedVideos.map((vid) => (
+                  <div key={vid.id}>
+                    <VideoPlayer url={vid.url} title={vid.title} poster={vid.type === "WALKTHROUGH" ? game.photos[1]?.url ?? cover : cover} agentPhoto={vid.type === "WALKTHROUGH" ? null : vid.agent?.photoUrl} />
+                    <p className="mt-1 text-xs font-semibold uppercase text-slate-400">{VIDEO_LABELS[vid.type]}{vid.agent ? ` · ${vid.agent.displayName}` : ""}</p>
+                    {vid.description && <p className="mt-1 text-sm text-slate-600">{vid.description}</p>}
                   </div>
                 ))}
               </div>
@@ -201,7 +205,7 @@ export default async function GamePage({ params }: { params: Promise<{ slug: str
                   <ul className="mt-2 max-h-80 divide-y divide-slate-100 overflow-auto text-sm">
                     {[...dist].reverse().map((d) => (
                       <li key={d.id} className={`flex justify-between px-2 py-1.5 ${d.userId === user?.id ? "bg-red-50 font-semibold" : ""}`}>
-                        <span>{d.name} {d.isAgent && <span className="pill ml-1 bg-blue-100 text-blue-700">Realtor</span>} {d.userId === user?.id && "(you)"}</span>
+                        <span>{d.name} {d.isAgent && <span className="pill ml-1 bg-blue-100 text-blue-700">Pro</span>} {d.userId === user?.id && "(you)"}</span>
                         <span>{money(d.amount)}</span>
                       </li>
                     ))}

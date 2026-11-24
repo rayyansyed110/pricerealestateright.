@@ -50,7 +50,7 @@ export async function listGames(filter: "active" | "pending" | "closed" | "upcom
     orderBy: filter === "closed" ? desc(schema.games.saleClosedAt) : asc(schema.games.closesAt),
     with: {
       photos: { orderBy: asc(schema.photos.sortOrder) },
-      videos: { where: eq(schema.videos.approved, true) },
+      videos: { where: eq(schema.videos.approved, true), orderBy: [asc(schema.videos.sortOrder), asc(schema.videos.createdAt)] },
       listingAgent: true,
     },
   });
@@ -61,8 +61,9 @@ export async function getGameBySlug(slug: string) {
     where: eq(schema.games.slug, slug),
     with: {
       photos: { orderBy: asc(schema.photos.sortOrder) },
-      videos: { where: eq(schema.videos.approved, true), with: { agent: true } },
+      videos: { where: eq(schema.videos.approved, true), with: { agent: true }, orderBy: [asc(schema.videos.sortOrder), asc(schema.videos.createdAt)] },
       listingAgent: true,
+      buyerAgent: true,
       winners: { with: { user: true } },
     },
   });
@@ -78,7 +79,7 @@ export { rankGuesses };
 
 /**
  * Admin enters the final (public record) sale price → winners are picked for the
- * public ladder and the realtor ladder, and result emails go out once.
+ * public ladder and the pro ladder, and result emails go out once.
  */
 export async function closeGame(gameId: string, finalPrice: number, opts: { sendEmails: boolean }) {
   const settings = await getSettings();
@@ -123,7 +124,7 @@ export async function closeGame(gameId: string, finalPrice: number, opts: { send
 
 // ---------- Leaderboards ----------
 export type LadderRow = {
-  userId: string; name: string; city: string | null; brokerage?: string | null;
+  userId: string; name: string; city: string | null; brokerage?: string | null; onBrokerageBoard?: boolean; brokerageState?: string | null;
   points: number; wins: number; played: number; top3: number; avgErrorPct: number; streak: number;
 };
 
@@ -166,6 +167,8 @@ export async function ladder(isAgent: boolean, year = new Date().getFullYear()):
         name: isAgent && u.agentProfile ? u.agentProfile.displayName : `${u.firstName} ${u.lastName.charAt(0)}.`,
         city: u.city,
         brokerage: u.agentProfile?.brokerage,
+        onBrokerageBoard: !!u.agentProfile && u.agentProfile.category === "AGENT" && u.agentProfile.brokerageLeaderboard,
+        brokerageState: u.agentProfile?.licenseState ?? null,
         points: s.points, wins: s.wins, played: s.played, top3: s.top3, streak: s.streak,
         avgErrorPct: s.errSum / s.played,
       };
@@ -181,4 +184,21 @@ export async function agentQuickStats(agentProfileId: string) {
   const [w] = await db.select({ n: sql<number>`count(*)::int` }).from(schema.gameWinners).where(eq(schema.gameWinners.userId, prof.userId));
   const games = g?.n ?? 0;
   return { games, wins: w?.n ?? 0, winRate: games ? Math.round(((w?.n ?? 0) / games) * 100) : 0 };
+}
+
+export type BrokerageRow = { key: string; name: string; state: string | null; agents: number; points: number; wins: number; avgErrorPct: number };
+
+/** Brokerage Leaderboard: agents who opted in are grouped by brokerage name; their season points add up. */
+export function brokerageLadder(agentRows: LadderRow[]): BrokerageRow[] {
+  const groups = new Map<string, BrokerageRow & { errSum: number }>();
+  for (const r of agentRows) {
+    if (!r.onBrokerageBoard || !r.brokerage) continue;
+    const key = r.brokerage.toLowerCase().replace(/[^a-z0-9]+/g, " ").trim() + "|" + (r.brokerageState ?? "");
+    const g = groups.get(key) ?? { key, name: r.brokerage, state: r.brokerageState ?? null, agents: 0, points: 0, wins: 0, avgErrorPct: 0, errSum: 0 };
+    g.agents++; g.points += r.points; g.wins += r.wins; g.errSum += r.avgErrorPct;
+    groups.set(key, g);
+  }
+  return [...groups.values()]
+    .map(({ errSum, ...g }) => ({ ...g, avgErrorPct: errSum / g.agents }))
+    .sort((a, b) => b.points - a.points || a.avgErrorPct - b.avgErrorPct);
 }

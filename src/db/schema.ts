@@ -21,6 +21,15 @@ export const users = pgTable("users", {
   lastName: text("last_name").notNull(),
   phone: text("phone"),
   city: text("city"),
+  addressLine1: text("address_line1"),
+  addressLine2: text("address_line2"),
+  state: text("state"),
+  zip: text("zip"),
+  householdKey: text("household_key"), // normalized address, used to limit players per household
+  smsConsent: boolean("sms_consent").notNull().default(false), // agreed to receive texts from the site & affiliates
+  smsGameAlerts: boolean("sms_game_alerts").notNull().default(false), // texts when new games start + updates on games played
+  smsWinNotify: boolean("sms_win_notify").notNull().default(false), // text/call when they win
+  rulesAcceptedAt: timestamp("rules_accepted_at", { withTimezone: true }), // incl. no-insider-information pledge
   role: roleEnum("role").notNull().default("PLAYER"),
   agentStatus: agentStatusEnum("agent_status").notNull().default("NONE"),
   usedMlsComps: boolean("used_mls_comps").notNull().default(false),
@@ -28,13 +37,17 @@ export const users = pgTable("users", {
   marketingOptIn: boolean("marketing_opt_in").notNull().default(true),
   disabled: boolean("disabled").notNull().default(false),
   createdAt: createdAt(),
-});
+}, (t) => [index("users_household_idx").on(t.householdKey)]);
 
 export const agentProfiles = pgTable("agent_profiles", {
   id: id(),
   userId: text("user_id").references(() => users.id, { onDelete: "cascade" }).unique(),
   displayName: text("display_name").notNull(),
-  brokerage: text("brokerage").notNull(),
+  // AGENT (real estate agent/broker), LAWYER, INSPECTOR, INSURANCE, MORTGAGE, TITLE, OTHER
+  category: text("category").notNull().default("AGENT"),
+  brokerage: text("brokerage").notNull(), // brokerage name (agents) or company name (other categories)
+  companyCity: text("company_city"),
+  brokerageLeaderboard: boolean("brokerage_leaderboard").notNull().default(false),
   licenseNumber: text("license_number"),
   licenseState: text("license_state"),
   phone: text("phone"),
@@ -97,6 +110,7 @@ export const games = pgTable("games", {
   prizeAmount: integer("prize_amount").notNull().default(100),
   published: boolean("published").notNull().default(true),
   listingAgentId: text("listing_agent_id").references(() => agentProfiles.id, { onDelete: "set null" }),
+  buyerAgentId: text("buyer_agent_id").references(() => agentProfiles.id, { onDelete: "set null" }),
   createdAt: createdAt(),
 }, (t) => [index("games_window_idx").on(t.opensAt, t.closesAt)]);
 
@@ -117,6 +131,7 @@ export const videos = pgTable("videos", {
   title: text("title").notNull(),
   url: text("url").notNull(),
   description: text("description"),
+  sortOrder: integer("sort_order").notNull().default(0),
   approved: boolean("approved").notNull().default(false),
   createdAt: createdAt(),
 });
@@ -176,11 +191,13 @@ export const usersRelations = relations(users, ({ one, many }) => ({
 }));
 export const agentProfilesRelations = relations(agentProfiles, ({ one, many }) => ({
   user: one(users, { fields: [agentProfiles.userId], references: [users.id] }),
-  listings: many(games),
+  listings: many(games, { relationName: "listingAgent" }),
+  buyerListings: many(games, { relationName: "buyerAgent" }),
   videos: many(videos),
 }));
 export const gamesRelations = relations(games, ({ one, many }) => ({
-  listingAgent: one(agentProfiles, { fields: [games.listingAgentId], references: [agentProfiles.id] }),
+  listingAgent: one(agentProfiles, { fields: [games.listingAgentId], references: [agentProfiles.id], relationName: "listingAgent" }),
+  buyerAgent: one(agentProfiles, { fields: [games.buyerAgentId], references: [agentProfiles.id], relationName: "buyerAgent" }),
   photos: many(photos),
   videos: many(videos),
   guesses: many(guesses),

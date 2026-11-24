@@ -1,21 +1,32 @@
 "use client";
 import { saveAgentProfileAction, submitVideoAction } from "@/app/actions/agent";
 import type { AgentProfile } from "@/db/schema";
+import { useState } from "react";
 import { Msg, Submit, useForm } from "./ui";
+import { PRO_CATEGORIES } from "@/lib/pro";
 
 export function AgentProfileForm({ p, defaultName }: { p: AgentProfile | null; defaultName: string }) {
   const { state: s, onSubmit: a, pending } = useForm(saveAgentProfileAction);
+  const [cat, setCat] = useState(p?.category ?? "AGENT");
+  const isAgent = cat === "AGENT";
   return (
     <form onSubmit={a} className="grid gap-3 sm:grid-cols-2">
       <div><label className="label">Display name</label><input name="displayName" defaultValue={p?.displayName ?? defaultName} required className="input" /></div>
-      <div><label className="label">Brokerage</label><input name="brokerage" defaultValue={p?.brokerage ?? ""} required className="input" /></div>
+      <div><label className="label">Category</label>
+        <select name="category" value={cat} onChange={(e) => setCat(e.target.value)} className="input">
+          {Object.entries(PRO_CATEGORIES).map(([k, v]) => <option key={k} value={k}>{v}</option>)}
+        </select>
+      </div>
+      <div><label className="label">{isAgent ? "Brokerage name" : "Company name"}</label><input name="brokerage" defaultValue={p?.brokerage ?? ""} required className="input" /></div>
+      {isAgent ? <div><label className="label">Brokerage city</label><input name="companyCity" defaultValue={p?.companyCity ?? ""} className="input" /></div> : <div />}
+      <div><label className="label">State</label><input name="licenseState" defaultValue={p?.licenseState ?? ""} maxLength={2} placeholder="TX" className="input uppercase" /></div>
       <div><label className="label">License #</label><input name="licenseNumber" defaultValue={p?.licenseNumber ?? ""} className="input" /></div>
-      <div><label className="label">License state</label><input name="licenseState" defaultValue={p?.licenseState ?? ""} className="input" /></div>
       <div><label className="label">Phone</label><input name="phone" defaultValue={p?.phone ?? ""} className="input" /></div>
-      <div><label className="label">Website</label><input name="website" type="url" defaultValue={p?.website ?? ""} placeholder="https://" className="input" /></div>
+      <div><label className="label">Your page / website</label><input name="website" defaultValue={p?.website ?? ""} placeholder="www.linktr.ee/yourname" className="input" /></div>
+      {isAgent && <label className="flex items-center gap-2 text-sm sm:col-span-2"><input type="checkbox" name="brokerageLeaderboard" defaultChecked={p?.brokerageLeaderboard ?? false} /> Include my brokerage on the Brokerage Leaderboard</label>}
       <div className="sm:col-span-2"><label className="label">Short bio (neighborhood expertise, negotiation tips…)</label><textarea name="bio" rows={3} defaultValue={p?.bio ?? ""} className="input" /></div>
       <div className="sm:col-span-2"><label className="label">Headshot</label><input name="photo" type="file" accept="image/*" className="text-sm" /></div>
-      <div className="space-y-2 sm:col-span-2"><Msg state={s} /><Submit pending={pending}>Save realtor profile</Submit></div>
+      <div className="space-y-2 sm:col-span-2"><Msg state={s} /><Submit pending={pending}>Save professional profile</Submit></div>
     </form>
   );
 }
